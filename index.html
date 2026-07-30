@@ -5217,20 +5217,21 @@
       const avg = summary.tickets ? summary.total / summary.tickets : 0;
       const breachRate = summary.tickets ? summary.breaches / summary.tickets * 100 : 0;
       const topDrivers = state.summaries.slice(0, 3);
+      const activeContext = [
+        state.config.flatFeeMode ? "Flat fee basis" : "",
+        state.mode === "chargeback" ? "Chargeback mode" : ""
+      ].filter(Boolean);
+      const driverTitle = `Top ${topDrivers.length} cost ${topDrivers.length === 1 ? "driver" : "drivers"}`;
       return `
         <section class="mirai-dashboard" aria-label="Qist executive dashboard">
           <div class="dashboard-primary">
-            <div class="market-kicker">
-              <span class="dark-chip">${topDrivers.length} Drivers</span>
-              <span class="soft-chip">Highest allocation impact in the current dataset</span>
-            </div>
             <div class="market-title-row">
-              <h2>Top cost drivers</h2>
-              <div class="market-filters" aria-label="Dashboard filters">
-                <span class="soft-chip">Current period</span>
-                <span class="soft-chip">${state.config.flatFeeMode ? "Flat fees" : "Hourly rates"}</span>
-                <span class="soft-chip">${state.mode === "showback" ? "Showback" : "Chargeback"}</span>
-              </div>
+              <h2>${driverTitle}</h2>
+              ${activeContext.length ? `
+                <div class="market-filters" aria-label="Active dashboard context">
+                  ${activeContext.map((label) => `<span class="soft-chip">${label}</span>`).join("")}
+                </div>
+              ` : ""}
             </div>
             <div class="driver-grid">
               ${topDrivers.map((item, index) => renderDriverCard(item, index)).join("")}
