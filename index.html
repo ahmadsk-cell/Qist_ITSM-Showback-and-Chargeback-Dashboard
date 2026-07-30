@@ -4284,6 +4284,96 @@
       box-shadow: none !important;
     }
 
+    .global-search-wrap.has-value .global-search {
+      padding-right: 42px;
+    }
+
+    .search-clear {
+      position: absolute;
+      right: 7px;
+      top: 50%;
+      z-index: 2;
+      display: grid;
+      place-items: center;
+      width: 25px;
+      height: 25px;
+      padding: 0;
+      border: 0;
+      border-radius: 7px !important;
+      background: transparent;
+      color: var(--main-muted);
+      cursor: pointer;
+      transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+      translate: 0 -50%;
+    }
+
+    .search-clear:hover {
+      background: color-mix(in srgb, var(--main-muted) 10%, transparent);
+      color: var(--main-ink);
+      transform: scale(.96);
+    }
+
+    .search-clear svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .search-context,
+    .search-inline {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--main-muted);
+      font-size: 12px;
+      font-weight: 430;
+      line-height: 1.2;
+    }
+
+    .search-context {
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    .search-inline {
+      margin: -2px 0 12px;
+    }
+
+    .search-context strong {
+      color: var(--main-ink);
+      font-weight: 580;
+    }
+
+    .search-context button {
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: var(--indigo);
+      font: inherit;
+      font-weight: 540;
+      cursor: pointer;
+    }
+
+    .search-context button:hover {
+      color: var(--main-ink);
+    }
+
+    .search-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      flex: 0 0 auto;
+      background: var(--green);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 13%, transparent),
+        0 0 12px color-mix(in srgb, var(--green) 52%, transparent);
+    }
+
+    .search-empty {
+      grid-column: 1 / -1;
+      min-height: 126px;
+      display: grid;
+      place-items: center;
+    }
+
     /* Premium theme switch */
     .header-actions .theme-toggle {
       position: relative;
@@ -5087,6 +5177,172 @@
       };
     }
 
+    function activeSearch() {
+      return String(state.globalSearch || "").trim();
+    }
+
+    function searchTokens(...values) {
+      return values
+        .map((value) => String(value ?? "").trim().toLowerCase())
+        .filter(Boolean)
+        .join(" ")
+        .split(/\s+/)
+        .filter(Boolean);
+    }
+
+    function flattenSearchValues(values, output = []) {
+      values.forEach((value) => {
+        if (Array.isArray(value)) flattenSearchValues(value, output);
+        else if (value !== null && value !== undefined) output.push(value);
+      });
+      return output;
+    }
+
+    function matchesTokens(fields, tokens) {
+      if (!tokens.length) return true;
+      const text = flattenSearchValues(fields).join(" ").toLowerCase();
+      return tokens.every((token) => text.includes(token));
+    }
+
+    function ticketSearchFields(ticket) {
+      return [
+        ticket.id,
+        ticket.createdDate,
+        ticket.closedDate,
+        ticket.department,
+        ticket.priority,
+        ticket.sensitivity,
+        ticket.slaStatus,
+        ticket.tierName,
+        ticket.projectCode || "Operational",
+        ticket.afterHours ? "after hours on call" : "",
+        ticket.assets,
+        ticket.deviceTypes,
+        ticket.billedHours,
+        ticket.rate,
+        ticket.multiplier,
+        ticket.ticketTotal,
+        moneyPrecise(ticket.ticketTotal)
+      ];
+    }
+
+    function summaryCoreSearchFields(summary) {
+      return [
+        summary.department,
+        summary.costCenter,
+        summary.headcount,
+        summary.workstations,
+        summary.carts,
+        summary.seats,
+        summary.eWasteAssets,
+        summary.ticketCount,
+        summary.billedHours,
+        summary.breaches,
+        summary.total,
+        moneyPrecise(summary.total),
+        "department cost center headcount workstations carts saas seats e waste assets ledger invoice"
+      ];
+    }
+
+    function summarySearchFields(summary) {
+      return [
+        summaryCoreSearchFields(summary),
+        summary.tickets.map((ticket) => ticketSearchFields(ticket))
+      ];
+    }
+
+    function ticketsForGlobalSearch(tokens = searchTokens(state.globalSearch)) {
+      if (!tokens.length) return state.tickets;
+      return state.tickets.filter((ticket) => matchesTokens(ticketSearchFields(ticket), tokens));
+    }
+
+    function filteredSummariesForSearch(tokens = searchTokens(state.globalSearch)) {
+      if (!tokens.length) return state.summaries;
+      return state.summaries.filter((summary) => matchesTokens(summarySearchFields(summary), tokens));
+    }
+
+    function trendForTickets(tickets) {
+      const trendMap = new Map();
+      tickets.forEach((ticket) => {
+        if (!trendMap.has(ticket.month)) trendMap.set(ticket.month, { key: ticket.month, label: monthLabel(ticket.month), tickets: 0, cost: 0, hours: 0 });
+        const bucket = trendMap.get(ticket.month);
+        bucket.tickets += 1;
+        bucket.cost += ticket.ticketTotal;
+        bucket.hours += ticket.billedHours;
+      });
+      return Array.from(trendMap.values()).sort((a, b) => a.key.localeCompare(b.key));
+    }
+
+    function departmentConfigFields(dept) {
+      return [
+        dept.name,
+        dept.costCenter,
+        dept.headcount,
+        dept.workstations,
+        dept.carts,
+        dept.seats,
+        dept.eWasteAssets,
+        "department cost center headcount workstations carts saas seats e waste assets organizational structure pro rata overhead"
+      ];
+    }
+
+    function settingsSearchModel(tokens = searchTokens(state.globalSearch)) {
+      const departmentRows = state.config.departments
+        .map((dept, index) => ({ dept, index }))
+        .filter(({ dept }) => matchesTokens(departmentConfigFields(dept), tokens));
+      const allDepartmentFields = state.config.departments.map((dept) => departmentConfigFields(dept));
+      const dictionaries = {
+        organization: ["organizational structure department departments cost center headcount pro rata overhead allocation", allDepartmentFields],
+        hourly: "hourly expertise rates dollars per hour tier 1 desktop support tier 2 advanced field support tier 3 systems network engineering clinical applications specialist cybersecurity enterprise architect",
+        flat: "ticket resolution flat fees tier 0 self service automated tier 1 tier 2 tier 3 optional alternative hourly",
+        sla: "sla priority multipliers low medium high critical standard urgent emergency life safety operational support",
+        afterHours: "after hours on call mobilization surcharge flat fee minimum hours sla breach credit penalty",
+        assets: "asset license subscriptions workstation laptop mobile telemetry bedside cart saas m365 workspace seat monthly rate",
+        compliance: "compliance overhead hipaa phi high sensitivity surcharge e waste hard drive destruction shared infrastructure overhead"
+      };
+      const visible = Object.fromEntries(Object.entries(dictionaries).map(([key, fields]) => [key, matchesTokens([fields], tokens)]));
+      const visibleCount = Object.values(visible).filter(Boolean).length;
+      return {
+        visible,
+        visibleCount,
+        departmentRows: tokens.length ? departmentRows : state.config.departments.map((dept, index) => ({ dept, index }))
+      };
+    }
+
+    function searchResultLabel() {
+      const tokens = searchTokens(state.globalSearch);
+      if (!tokens.length) return "";
+      if (state.activeView === "tickets") {
+        const rows = filteredTickets();
+        return `${number(rows.length, 0)} ${rows.length === 1 ? "ticket" : "tickets"}`;
+      }
+      if (state.activeView === "departments") {
+        const rows = filteredSummariesForSearch(tokens);
+        return `${number(rows.length, 0)} ${rows.length === 1 ? "department" : "departments"}`;
+      }
+      if (state.activeView === "settings") {
+        const meta = settingsSearchModel(tokens);
+        return `${number(meta.visibleCount, 0)} settings ${meta.visibleCount === 1 ? "area" : "areas"}`;
+      }
+      if (state.activeView === "exports") {
+        const rows = filteredSummariesForSearch(tokens);
+        return `${number(rows.length, 0)} ${rows.length === 1 ? "department preview" : "department previews"}`;
+      }
+      const departments = filteredSummariesForSearch(tokens).length;
+      const tickets = ticketsForGlobalSearch(tokens).length;
+      return `${number(departments, 0)} ${departments === 1 ? "department" : "departments"}, ${number(tickets, 0)} ${tickets === 1 ? "ticket" : "tickets"}`;
+    }
+
+    function searchPlaceholder() {
+      return {
+        overview: "Search departments, tickets, cost centers...",
+        tickets: "Search tickets, assets, projects...",
+        departments: "Search departments or ledger detail...",
+        settings: "Search rates, fees, departments...",
+        exports: "Search export previews..."
+      }[state.activeView] || "Search data...";
+    }
+
     function render() {
       aggregate();
       const summary = totals();
@@ -5114,6 +5370,7 @@
     function renderSidebar(summary) {
       const mainItems = navItems.filter((item) => item.id !== "settings");
       const settingsItem = navItems.find((item) => item.id === "settings");
+      const sidebarPlaceholder = activeSearch() ? "Filtering data" : "Search data";
       return `
         <aside class="sidebar" aria-label="Qist navigation">
           <button class="qist-brand brand-home" type="button" data-view="overview" aria-label="Return to dashboard home">
@@ -5121,7 +5378,7 @@
             <p class="brand-label">Chargeback OS</p>
           </button>
           <div class="sidebar-search">
-            <input class="side-search-input" data-global-search data-search-origin="side" placeholder="Search" value="${html(state.globalSearch)}" aria-label="Sidebar search">
+            <input class="side-search-input" data-global-search data-search-origin="side" placeholder="${html(sidebarPlaceholder)}" value="${html(state.globalSearch)}" aria-label="Sidebar search">
           </div>
           <div class="sidebar-block">
             <p class="sidebar-section-label">Main Menu</p>
@@ -5177,6 +5434,7 @@
     }
     function renderTopHeader(summary) {
       const view = navItems.find((item) => item.id === state.activeView) || navItems[0];
+      const query = activeSearch();
       return `
         <header class="topbar">
           <div class="topbar-inner">
@@ -5184,8 +5442,13 @@
               <h1>${view.label}</h1>
               <span class="pill green">Model online</span>
             </div>
-            <div class="global-search-wrap">
-              <input class="global-search" data-global-search data-search-origin="top" placeholder="Search..." value="${html(state.globalSearch)}" aria-label="Global search">
+            <div class="global-search-wrap ${query ? "has-value" : ""}">
+              <input class="global-search" data-global-search data-search-origin="top" placeholder="${html(searchPlaceholder())}" value="${html(state.globalSearch)}" aria-label="Global search">
+              ${query ? `
+                <button class="search-clear" type="button" data-action="clear-global-search" aria-label="Clear search">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="M6 6l12 12"></path></svg>
+                </button>
+              ` : ""}
             </div>
             <div class="header-actions">
               <button class="btn" type="button" data-action="export-pdf">Export PDF</button>
@@ -5212,6 +5475,8 @@
       const modeText = state.mode === "showback"
         ? "Informational cost awareness reporting. No ledger transfer language is used in exports."
         : "Invoice-ready ledger transfer language is used for departmental billing exports.";
+      const query = activeSearch();
+      const resultLabel = searchResultLabel();
       return `
         <section class="command-bar" aria-label="Current model status">
           <div class="context-strip">
@@ -5228,6 +5493,14 @@
               <span>${summary.tickets} tickets</span>
               <span>${state.summaries.length} departments</span>
             </div>
+            ${query ? `
+              <div class="search-context" aria-live="polite">
+                <span class="search-dot"></span>
+                <strong>${html(query)}</strong>
+                <span>${html(resultLabel)} matched in this view</span>
+                <button type="button" data-action="clear-global-search">Clear</button>
+              </div>
+            ` : ""}
           </div>
           <div class="segmented" role="group" aria-label="Report mode">
             <button class="${state.mode === "showback" ? "active" : ""}" type="button" data-mode="showback">Showback</button>
@@ -5240,12 +5513,18 @@
     function renderOverview(summary) {
       const avg = summary.tickets ? summary.total / summary.tickets : 0;
       const breachRate = summary.tickets ? summary.breaches / summary.tickets * 100 : 0;
-      const topDrivers = state.summaries.slice(0, 3);
+      const query = activeSearch();
+      const tokens = searchTokens(state.globalSearch);
+      const scopedTickets = query ? ticketsForGlobalSearch(tokens) : state.tickets;
+      const scopedSummaries = query ? filteredSummariesForSearch(tokens) : state.summaries;
+      const topDrivers = scopedSummaries.slice(0, 3);
+      const trend = query ? trendForTickets(scopedTickets) : state.trend;
       const activeContext = [
+        query ? `${scopedTickets.length} ticket ${scopedTickets.length === 1 ? "match" : "matches"}` : "",
         state.config.flatFeeMode ? "Flat fee basis" : "",
         state.mode === "chargeback" ? "Chargeback mode" : ""
       ].filter(Boolean);
-      const driverTitle = `Top ${topDrivers.length} cost ${topDrivers.length === 1 ? "driver" : "drivers"}`;
+      const driverTitle = query ? `Matching cost ${topDrivers.length === 1 ? "driver" : "drivers"}` : `Top ${topDrivers.length} cost ${topDrivers.length === 1 ? "driver" : "drivers"}`;
       return `
         <section class="mirai-dashboard" aria-label="Qist executive dashboard">
           <div class="dashboard-primary">
@@ -5258,26 +5537,26 @@
               ` : ""}
             </div>
             <div class="driver-grid">
-              ${topDrivers.map((item, index) => renderDriverCard(item, index)).join("")}
+              ${topDrivers.length ? topDrivers.map((item, index) => renderDriverCard(item, index)).join("") : `<div class="empty-state search-empty">No departments match the current search.</div>`}
             </div>
             <div class="chart-panel">
               <div class="section-title-row">
-                <h2>Monthly cost trend</h2>
-                <span class="soft-chip">Weekly</span>
+                <h2>${query ? "Matched cost trend" : "Monthly cost trend"}</h2>
+                <span class="soft-chip">${query ? "Filtered" : "Weekly"}</span>
               </div>
-              ${renderTrendChart(state.trend)}
+              ${renderTrendChart(trend)}
             </div>
             <div class="recent-panel">
               <div class="section-title-row">
-                <h2>Recent ticket activity</h2>
+                <h2>${query ? "Matching ticket activity" : "Recent ticket activity"}</h2>
                 <button class="btn ghost" type="button" data-view="tickets">See All &gt;</button>
               </div>
-              ${renderRecentTransactions()}
+              ${renderRecentTransactions(scopedTickets)}
             </div>
           </div>
           <aside class="right-rail" aria-label="Dashboard side panels">
             ${renderBillingRail(summary, avg, breachRate)}
-            ${renderPortfolioRail()}
+            ${renderPortfolioRail(scopedSummaries)}
             ${renderTermsRail()}
           </aside>
         </section>
@@ -5326,26 +5605,27 @@
       `;
     }
 
-    function renderPortfolioRail() {
-      const top = state.summaries.slice(0, 3);
+    function renderPortfolioRail(items = state.summaries) {
+      const top = items.slice(0, 3);
+      const visibleTotal = Math.max(1, items.reduce((sum, row) => sum + row.total, 0));
       return `
         <article class="rail-card">
           <div class="rail-title">
             <h3>Department mix</h3>
-            <span class="soft-chip">Top departments</span>
+            <span class="soft-chip">${activeSearch() ? "Filtered" : "Top departments"}</span>
           </div>
           <div><span class="rail-value">${top.length}</span> <span class="muted">Cost Centers</span> <span class="gain-pill">+${number(top.reduce((sum, item) => sum + item.ticketCount, 0), 0)}</span></div>
           <div class="portfolio-bars">
             ${top.map((item, index) => `<span style="background:${colors[index % colors.length]}"></span>`).join("")}
           </div>
           <div class="portfolio-list">
-            ${top.map((item, index) => `
+            ${top.length ? top.map((item, index) => `
               <div class="portfolio-item">
                 <span class="driver-icon" style="background:${colors[index % colors.length]}">${html(item.department.slice(0, 2).toUpperCase())}</span>
                 <div><strong>${html(item.department)}</strong><span>${moneyPrecise(item.total)}</span></div>
-                <span class="gain-pill ${item.slaImpact < 0 ? "loss" : ""}">${item.slaImpact < 0 ? money(item.slaImpact) : "+" + percent(item.total / Math.max(1, state.summaries.reduce((sum, row) => sum + row.total, 0)) * 100)}</span>
+                <span class="gain-pill ${item.slaImpact < 0 ? "loss" : ""}">${item.slaImpact < 0 ? money(item.slaImpact) : "+" + percent(item.total / visibleTotal * 100)}</span>
               </div>
-            `).join("")}
+            `).join("") : `<div class="empty-state">No matching departments.</div>`}
           </div>
         </article>
       `;
@@ -5376,8 +5656,9 @@
       `;
     }
 
-    function renderRecentTransactions() {
-      const rows = [...state.tickets].sort((a, b) => String(b.createdDate).localeCompare(String(a.createdDate))).slice(0, 5);
+    function renderRecentTransactions(sourceRows = state.tickets) {
+      const rows = [...sourceRows].sort((a, b) => String(b.createdDate).localeCompare(String(a.createdDate))).slice(0, 5);
+      if (!rows.length) return `<div class="empty-state">No tickets match the current search.</div>`;
       return `
         <div class="table-wrap">
           <table>
@@ -5675,20 +5956,26 @@
     }
 
     function renderDepartments() {
-      const selected = state.summaries.find((summary) => summary.department === state.selectedDepartment) || state.summaries[0];
+      const tokens = searchTokens(state.globalSearch);
+      const scopedSummaries = tokens.length ? filteredSummariesForSearch(tokens) : state.summaries;
+      const selected = (tokens.length ? scopedSummaries : state.summaries).find((summary) => summary.department === state.selectedDepartment) || scopedSummaries[0];
       if (!selected) return `<section class="panel"><div class="empty-state">No departments available.</div></section>`;
+      const selectedCoreMatch = matchesTokens(summaryCoreSearchFields(selected), tokens);
+      const activityRows = tokens.length && !selectedCoreMatch
+        ? selected.tickets.filter((ticket) => matchesTokens(ticketSearchFields(ticket), tokens))
+        : selected.tickets;
       return `
         <section class="grid">
           <div class="panel">
             <div class="panel-header">
               <div>
                 <h2 class="panel-title">Departmental Breakdown</h2>
-                <p class="panel-subtitle">Detailed ledger for department heads, including assets, tickets, overhead, SLA metrics, and clinical/security sensitivity charges.</p>
+                <p class="panel-subtitle">${tokens.length ? `${scopedSummaries.length} matching department ${scopedSummaries.length === 1 ? "ledger" : "ledgers"} in the current dataset.` : "Detailed ledger for department heads, including assets, tickets, overhead, SLA metrics, and clinical/security sensitivity charges."}</p>
               </div>
               <div class="field" style="min-width:240px">
                 <label for="departmentSelect">Department</label>
                 <select id="departmentSelect" data-action="select-department">
-                  ${state.summaries.map((summary) => `<option value="${html(summary.department)}" ${summary.department === selected.department ? "selected" : ""}>${html(summary.department)}</option>`).join("")}
+                  ${scopedSummaries.map((summary) => `<option value="${html(summary.department)}" ${summary.department === selected.department ? "selected" : ""}>${html(summary.department)}</option>`).join("")}
                 </select>
               </div>
             </div>
@@ -5725,10 +6012,10 @@
             <div class="panel-header">
               <div>
                 <h2 class="panel-title">Department Ticket Detail</h2>
-                <p class="panel-subtitle">Calculated support activity tied to ${html(selected.department)}.</p>
+                <p class="panel-subtitle">${tokens.length ? `${activityRows.length} matching ${activityRows.length === 1 ? "ticket" : "tickets"} tied to ${html(selected.department)}.` : `Calculated support activity tied to ${html(selected.department)}.`}</p>
               </div>
             </div>
-            ${renderTicketTable(selected.tickets, true)}
+            ${renderTicketTable(activityRows, true)}
           </div>
         </section>
       `;
@@ -5819,6 +6106,7 @@
               ${renderFilterSelect("priority", "Priority", priorities)}
               ${renderFilterSelect("sensitivity", "Sensitivity", sensitivities)}
             </div>
+            ${activeSearch() ? `<div class="search-inline"><span class="search-dot"></span><span>${rows.length} ${rows.length === 1 ? "ticket" : "tickets"} after global search and local filters</span></div>` : ""}
             ${renderTicketTable(rows, false)}
           </div>
         </section>
@@ -5837,22 +6125,12 @@
     }
 
     function filteredTickets() {
-      const search = [state.globalSearch, state.filters.search].filter(Boolean).join(" ").toLowerCase();
+      const tokens = searchTokens(state.globalSearch, state.filters.search);
       return state.tickets.filter((ticket) => {
         if (state.filters.department !== "All" && ticket.department !== state.filters.department) return false;
         if (state.filters.priority !== "All" && ticket.priority !== state.filters.priority) return false;
         if (state.filters.sensitivity !== "All" && ticket.sensitivity !== state.filters.sensitivity) return false;
-        if (!search) return true;
-        return [
-          ticket.id,
-          ticket.department,
-          ticket.priority,
-          ticket.sensitivity,
-          ticket.tierName,
-          ticket.projectCode,
-          ticket.assets.join(" "),
-          ticket.deviceTypes.join(" ")
-        ].join(" ").toLowerCase().includes(search);
+        return matchesTokens(ticketSearchFields(ticket), tokens);
       });
     }
 
@@ -5895,6 +6173,51 @@
     }
 
     function renderSettings() {
+      const settingsMeta = settingsSearchModel();
+      const visible = settingsMeta.visible;
+      const departmentRows = settingsMeta.departmentRows;
+      const noMatches = activeSearch() && !settingsMeta.visibleCount;
+      const organizationSection = visible.organization ? `
+        <div class="panel settings-section">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title">Organizational Structure</h2>
+              <p class="panel-subtitle">Departments drive pro-rata shared infrastructure overhead and asset subscription allocations.</p>
+            </div>
+            <button class="btn primary" type="button" data-action="add-department">Add Department</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Department</th>
+                  <th>Cost Center</th>
+                  <th class="numeric">Headcount</th>
+                  <th class="numeric">Workstations</th>
+                  <th class="numeric">Carts</th>
+                  <th class="numeric">SaaS Seats</th>
+                  <th class="numeric">E-Waste Assets</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${departmentRows.map(({ dept, index }) => `
+                  <tr>
+                    ${departmentCell(index, "name", dept.name, "text")}
+                    ${departmentCell(index, "costCenter", dept.costCenter, "text")}
+                    ${departmentCell(index, "headcount", dept.headcount, "number", true)}
+                    ${departmentCell(index, "workstations", dept.workstations, "number", true)}
+                    ${departmentCell(index, "carts", dept.carts, "number", true)}
+                    ${departmentCell(index, "seats", dept.seats, "number", true)}
+                    ${departmentCell(index, "eWasteAssets", dept.eWasteAssets, "number", true)}
+                    <td><button class="btn danger" type="button" data-action="remove-department" data-index="${index}">Remove</button></td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ` : "";
       return `
         <section class="grid">
           <div class="panel">
@@ -5910,159 +6233,140 @@
             </div>
           </div>
 
-          <div class="panel settings-section">
-            <div class="panel-header">
-              <div>
-                <h2 class="panel-title">Organizational Structure</h2>
-                <p class="panel-subtitle">Departments drive pro-rata shared infrastructure overhead and asset subscription allocations.</p>
-              </div>
-              <button class="btn primary" type="button" data-action="add-department">Add Department</button>
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Department</th>
-                    <th>Cost Center</th>
-                    <th class="numeric">Headcount</th>
-                    <th class="numeric">Workstations</th>
-                    <th class="numeric">Carts</th>
-                    <th class="numeric">SaaS Seats</th>
-                    <th class="numeric">E-Waste Assets</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${state.config.departments.map((dept, index) => `
-                    <tr>
-                      ${departmentCell(index, "name", dept.name, "text")}
-                      ${departmentCell(index, "costCenter", dept.costCenter, "text")}
-                      ${departmentCell(index, "headcount", dept.headcount, "number", true)}
-                      ${departmentCell(index, "workstations", dept.workstations, "number", true)}
-                      ${departmentCell(index, "carts", dept.carts, "number", true)}
-                      ${departmentCell(index, "seats", dept.seats, "number", true)}
-                      ${departmentCell(index, "eWasteAssets", dept.eWasteAssets, "number", true)}
-                      <td><button class="btn danger" type="button" data-action="remove-department" data-index="${index}">Remove</button></td>
-                    </tr>
-                  `).join("")}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          ${noMatches ? `<div class="panel"><div class="empty-state">No settings match the current search.</div></div>` : ""}
+          ${organizationSection}
 
-          <div class="grid two">
-            <div class="panel settings-section">
-              <div class="panel-header">
-                <div>
-                  <h2 class="panel-title">Hourly & Expertise Rates</h2>
-                  <p class="panel-subtitle">Used when flat fee mode is off.</p>
+          ${visible.hourly || visible.flat ? `
+            <div class="grid two">
+              ${visible.hourly ? `
+                <div class="panel settings-section">
+                  <div class="panel-header">
+                    <div>
+                      <h2 class="panel-title">Hourly & Expertise Rates</h2>
+                      <p class="panel-subtitle">Used when flat fee mode is off.</p>
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    ${rateInput("tier1", "Tier 1 Desktop Support")}
+                    ${rateInput("tier2", "Tier 2 Advanced Field Support")}
+                    ${rateInput("tier3", "Tier 3 Systems / Network Engineering")}
+                    ${rateInput("clinical", "Clinical Applications Specialist")}
+                    ${rateInput("cyber", "Cybersecurity / Enterprise Architect")}
+                  </div>
                 </div>
-              </div>
-              <div class="form-row">
-                ${rateInput("tier1", "Tier 1 Desktop Support")}
-                ${rateInput("tier2", "Tier 2 Advanced Field Support")}
-                ${rateInput("tier3", "Tier 3 Systems / Network Engineering")}
-                ${rateInput("clinical", "Clinical Applications Specialist")}
-                ${rateInput("cyber", "Cybersecurity / Enterprise Architect")}
-              </div>
-            </div>
+              ` : ""}
 
-            <div class="panel settings-section">
-              <div class="toggle-row">
-                <div>
-                  <strong>Use Ticket Resolution Flat Fees</strong>
-                  <div class="muted">When enabled, tickets use tier flat fees instead of billed hours x hourly rate.</div>
+              ${visible.flat ? `
+                <div class="panel settings-section">
+                  <div class="toggle-row">
+                    <div>
+                      <strong>Use Ticket Resolution Flat Fees</strong>
+                      <div class="muted">When enabled, tickets use tier flat fees instead of billed hours x hourly rate.</div>
+                    </div>
+                    <input type="checkbox" aria-label="Use flat fees" data-config-path="flatFeeMode" ${state.config.flatFeeMode ? "checked" : ""}>
+                  </div>
+                  <div class="form-row">
+                    ${flatInput("tier0", "Tier 0")}
+                    ${flatInput("tier1", "Tier 1")}
+                    ${flatInput("tier2", "Tier 2")}
+                    ${flatInput("tier3", "Tier 3")}
+                  </div>
                 </div>
-                <input type="checkbox" aria-label="Use flat fees" data-config-path="flatFeeMode" ${state.config.flatFeeMode ? "checked" : ""}>
-              </div>
-              <div class="form-row">
-                ${flatInput("tier0", "Tier 0")}
-                ${flatInput("tier1", "Tier 1")}
-                ${flatInput("tier2", "Tier 2")}
-                ${flatInput("tier3", "Tier 3")}
-              </div>
+              ` : ""}
             </div>
-          </div>
+          ` : ""}
 
-          <div class="grid two">
-            <div class="panel settings-section">
-              <div class="panel-header">
-                <div>
-                <h2 class="panel-title">SLA & Priority Multipliers ${tip("Each priority tier multiplies the base labor or flat-fee support charge before surcharges and SLA credits are applied.")}</h2>
-                  <p class="panel-subtitle">Adjust priority severity premiums for low, medium, high, and critical work.</p>
+          ${visible.sla || visible.afterHours ? `
+            <div class="grid two">
+              ${visible.sla ? `
+                <div class="panel settings-section">
+                  <div class="panel-header">
+                    <div>
+                    <h2 class="panel-title">SLA & Priority Multipliers ${tip("Each priority tier multiplies the base labor or flat-fee support charge before surcharges and SLA credits are applied.")}</h2>
+                      <p class="panel-subtitle">Adjust priority severity premiums for low, medium, high, and critical work.</p>
+                    </div>
+                  </div>
+                  <div class="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Priority</th>
+                          <th>Description</th>
+                          <th class="numeric">Multiplier</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${state.config.priorityMultipliers.map((item, index) => `
+                          <tr>
+                            <td><strong>${html(item.priority)}</strong></td>
+                            <td><input class="input" value="${html(item.description)}" data-priority-index="${index}" data-priority-field="description"></td>
+                            <td>
+                              <div class="range-line">
+                                <input type="range" min="0.5" max="3" step="0.05" value="${html(item.multiplier)}" data-priority-index="${index}" data-priority-field="multiplier" aria-label="${html(item.priority)} SLA multiplier">
+                                <span class="amount">${number(item.multiplier, 2)}x</span>
+                              </div>
+                            </td>
+                          </tr>
+                        `).join("")}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-              <div class="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Priority</th>
-                      <th>Description</th>
-                      <th class="numeric">Multiplier</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${state.config.priorityMultipliers.map((item, index) => `
-                      <tr>
-                        <td><strong>${html(item.priority)}</strong></td>
-                        <td><input class="input" value="${html(item.description)}" data-priority-index="${index}" data-priority-field="description"></td>
-                        <td>
-                          <div class="range-line">
-                            <input type="range" min="0.5" max="3" step="0.05" value="${html(item.multiplier)}" data-priority-index="${index}" data-priority-field="multiplier" aria-label="${html(item.priority)} SLA multiplier">
-                            <span class="amount">${number(item.multiplier, 2)}x</span>
-                          </div>
-                        </td>
-                      </tr>
-                    `).join("")}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+              ` : ""}
 
-            <div class="panel settings-section">
-              <div class="panel-header">
-                <div>
-                  <h2 class="panel-title">After-Hours / On-Call Mobilization</h2>
-                  <p class="panel-subtitle">Applied to tickets flagged as after-hours or on-call.</p>
+              ${visible.afterHours ? `
+                <div class="panel settings-section">
+                  <div class="panel-header">
+                    <div>
+                      <h2 class="panel-title">After-Hours / On-Call Mobilization</h2>
+                      <p class="panel-subtitle">Applied to tickets flagged as after-hours or on-call.</p>
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    ${configInput("afterHours.flatFee", "Flat Surcharge")}
+                    ${configInput("afterHours.minimumHours", "Minimum Hours")}
+                    ${configInput("fees.slaBreachCreditPct", "SLA Breach Credit %")}
+                  </div>
                 </div>
-              </div>
-              <div class="form-row">
-                ${configInput("afterHours.flatFee", "Flat Surcharge")}
-                ${configInput("afterHours.minimumHours", "Minimum Hours")}
-                ${configInput("fees.slaBreachCreditPct", "SLA Breach Credit %")}
-              </div>
+              ` : ""}
             </div>
-          </div>
+          ` : ""}
 
-          <div class="grid two">
-            <div class="panel settings-section">
-              <div class="panel-header">
-                <div>
-                  <h2 class="panel-title">Asset & License Subscriptions</h2>
-                  <p class="panel-subtitle">Monthly base rates by unit type.</p>
+          ${visible.assets || visible.compliance ? `
+            <div class="grid two">
+              ${visible.assets ? `
+                <div class="panel settings-section">
+                  <div class="panel-header">
+                    <div>
+                      <h2 class="panel-title">Asset & License Subscriptions</h2>
+                      <p class="panel-subtitle">Monthly base rates by unit type.</p>
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    ${configInput("assetRates.workstation", "Workstation / Laptop")}
+                    ${configInput("assetRates.mobileCart", "Mobile / Telemetry / Cart")}
+                    ${configInput("assetRates.saasSeat", "SaaS / M365 Seat")}
+                  </div>
                 </div>
-              </div>
-              <div class="form-row">
-                ${configInput("assetRates.workstation", "Workstation / Laptop")}
-                ${configInput("assetRates.mobileCart", "Mobile / Telemetry / Cart")}
-                ${configInput("assetRates.saasSeat", "SaaS / M365 Seat")}
-              </div>
-            </div>
+              ` : ""}
 
-            <div class="panel settings-section">
-              <div class="panel-header">
-                <div>
-                <h2 class="panel-title">Compliance & Overhead Fees ${tip("Compliance fees add sensitivity-based surcharges. Shared overhead is allocated pro-rata by configured department headcount.")}</h2>
-                  <p class="panel-subtitle">HIPAA sensitivity surcharge, e-waste disposal, and enterprise shared services pool.</p>
+              ${visible.compliance ? `
+                <div class="panel settings-section">
+                  <div class="panel-header">
+                    <div>
+                    <h2 class="panel-title">Compliance & Overhead Fees ${tip("Compliance fees add sensitivity-based surcharges. Shared overhead is allocated pro-rata by configured department headcount.")}</h2>
+                      <p class="panel-subtitle">HIPAA sensitivity surcharge, e-waste disposal, and enterprise shared services pool.</p>
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    ${configInput("fees.hipaaSurchargePct", "HIPAA / PHI Surcharge %")}
+                    ${configInput("fees.eWasteAssetFee", "E-Waste Fee / Asset")}
+                    ${configInput("fees.sharedOverhead", "Shared Overhead Pool")}
+                  </div>
                 </div>
-              </div>
-              <div class="form-row">
-                ${configInput("fees.hipaaSurchargePct", "HIPAA / PHI Surcharge %")}
-                ${configInput("fees.eWasteAssetFee", "E-Waste Fee / Asset")}
-                ${configInput("fees.sharedOverhead", "Shared Overhead Pool")}
-              </div>
+              ` : ""}
             </div>
-          </div>
+          ` : ""}
         </section>
       `;
     }
@@ -6116,6 +6420,8 @@
     }
 
     function renderExports(summary) {
+      const tokens = searchTokens(state.globalSearch);
+      const previewRows = tokens.length ? filteredSummariesForSearch(tokens) : state.summaries;
       return `
         <section class="grid">
           <div class="panel">
@@ -6132,7 +6438,7 @@
             </div>
             <section class="kpi-grid" style="margin-bottom:0">
               ${renderKpi("Export Mode", state.mode === "showback" ? "Showback" : "Chargeback", "Toggle mode in the header", "blue")}
-              ${renderKpi("Departments", String(state.summaries.length), "One ledger row set per department", "green")}
+              ${renderKpi(tokens.length ? "Preview Rows" : "Departments", String(previewRows.length), tokens.length ? "Scoped by current search" : "One ledger row set per department", "green")}
               ${renderKpi("Tickets", String(summary.tickets), "Row-level billable support detail", "amber")}
               ${renderKpi("Total Output", money(summary.total), "Current calculated model", "rose")}
             </section>
@@ -6142,10 +6448,10 @@
             <div class="panel-header">
               <div>
                 <h2 class="panel-title">Department Export Preview</h2>
-                <p class="panel-subtitle">This mirrors the department CSV line-item export.</p>
+                <p class="panel-subtitle">${tokens.length ? "Preview rows are scoped by the active search." : "This mirrors the department CSV line-item export."}</p>
               </div>
             </div>
-            <div class="table-wrap">
+            ${previewRows.length ? `<div class="table-wrap">
               <table>
                 <thead>
                   <tr>
@@ -6162,7 +6468,7 @@
                   </tr>
                 </thead>
                 <tbody>
-                  ${state.summaries.map((row) => `
+                  ${previewRows.map((row) => `
                     <tr>
                       <td><strong>${html(row.department)}</strong></td>
                       <td>${html(row.costCenter)}</td>
@@ -6178,7 +6484,7 @@
                   `).join("")}
                 </tbody>
               </table>
-            </div>
+            </div>` : `<div class="empty-state">No department export rows match the current search.</div>`}
             <p class="footer-note">The PDF is generated entirely in the browser as a simple executive summary file. CSV exports include normalized calculated fields for downstream invoicing or ledger workflows.</p>
           </div>
         </section>
@@ -6244,6 +6550,11 @@
       if (action === "toggle-theme") {
         state.theme = state.theme === "dark" ? "light" : "dark";
         saveTheme();
+        render();
+        return;
+      }
+      if (action === "clear-global-search") {
+        state.globalSearch = "";
         render();
         return;
       }
