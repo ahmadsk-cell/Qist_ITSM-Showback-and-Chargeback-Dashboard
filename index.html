@@ -4542,6 +4542,30 @@
     [data-theme="dark"] .sidebar-user .dataset-mode {
       color: #7ee8ca;
     }
+
+    .qist-brand.brand-home {
+      width: 100%;
+      border-top: 0;
+      border-left: 0;
+      border-right: 0;
+      background: transparent;
+      text-align: left;
+      color: inherit;
+      cursor: pointer;
+      appearance: none;
+      font: inherit;
+      transition: background 160ms ease, box-shadow 160ms ease;
+    }
+
+    .qist-brand.brand-home:hover {
+      background: color-mix(in srgb, var(--card-bg) 38%, transparent);
+    }
+
+    .qist-brand.brand-home:focus-visible {
+      outline: 2px solid color-mix(in srgb, var(--green) 36%, transparent);
+      outline-offset: -3px;
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--green) 18%, transparent);
+    }
   </style>
 </head>
 <body>
@@ -5092,10 +5116,10 @@
       const settingsItem = navItems.find((item) => item.id === "settings");
       return `
         <aside class="sidebar" aria-label="Qist navigation">
-          <div class="qist-brand">
+          <button class="qist-brand brand-home" type="button" data-view="overview" aria-label="Return to dashboard home">
             <div class="brand-wordmark" role="img" aria-label="Qist"></div>
             <p class="brand-label">Chargeback OS</p>
-          </div>
+          </button>
           <div class="sidebar-search">
             <input class="side-search-input" data-global-search data-search-origin="side" placeholder="Search" value="${html(state.globalSearch)}" aria-label="Sidebar search">
           </div>
