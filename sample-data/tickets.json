@@ -1,0 +1,47 @@
+[
+  {
+    "ticketId": "INC-10041",
+    "createdDate": "2026-04-02",
+    "closedDate": "2026-04-02",
+    "department": "ER",
+    "priority": "Critical",
+    "sensitivity": "Clinical Systems - EMR",
+    "assets": "CART-ER-018; WS-ER-044",
+    "deviceTypes": "Clinical Cart; Workstation",
+    "hours": 3.2,
+    "slaStatus": "Met",
+    "tier": "Clinical Applications Specialist",
+    "projectCode": "",
+    "afterHours": "Yes"
+  },
+  {
+    "ticketId": "INC-10188",
+    "createdDate": "2026-05-17",
+    "closedDate": "2026-05-18",
+    "department": "ICU",
+    "priority": "Critical",
+    "sensitivity": "High Sensitivity PHI",
+    "assets": "CART-ICU-011; MON-ICU-033",
+    "deviceTypes": "Clinical Cart; Mobile / Telemetry",
+    "hours": 5.6,
+    "slaStatus": "Breached",
+    "tier": "Clinical Applications Specialist",
+    "projectCode": "",
+    "afterHours": "Yes"
+  },
+  {
+    "ticketId": "INC-10263",
+    "createdDate": "2026-06-12",
+    "closedDate": "2026-06-14",
+    "department": "HR",
+    "priority": "High",
+    "sensitivity": "Security Incident - PHI",
+    "assets": "WS-HR-018; SAAS-HR-022",
+    "deviceTypes": "Workstation; SaaS Seat",
+    "hours": 4.2,
+    "slaStatus": "Breached",
+    "tier": "Cybersecurity / Enterprise Architect",
+    "projectCode": "",
+    "afterHours": "No"
+  }
+]
