@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Qist GitHub Social Preview</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      width: 1280px;
+      height: 640px;
+      margin: 0;
+      overflow: hidden;
+      background: #111315;
+      color: #f7f8f8;
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+      text-rendering: geometricPrecision;
+    }
+
+    .artboard {
+      position: relative;
+      width: 1280px;
+      height: 640px;
+      overflow: hidden;
+      background:
+        linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px),
+        #111315;
+      background-size: 48px 48px;
+    }
+
+    .artboard::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-top: 4px solid #43d4ad;
+      pointer-events: none;
+    }
+
+    .brand {
+      position: absolute;
+      top: 66px;
+      left: 72px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .qist-logo {
+      width: 158px;
+      height: 54px;
+      background: #f7f8f8;
+      -webkit-mask: url("../assets/qistlogo-mask.svg") center / contain no-repeat;
+      mask: url("../assets/qistlogo-mask.svg") center / contain no-repeat;
+    }
+
+    .brand-divider {
+      width: 1px;
+      height: 30px;
+      background: #3a3f43;
+    }
+
+    .brand-note {
+      color: #aeb5b9;
+      font-size: 15px;
+      font-weight: 500;
+      letter-spacing: .01em;
+    }
+
+    .copy {
+      position: absolute;
+      left: 72px;
+      top: 180px;
+      width: 470px;
+    }
+
+    .eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 20px;
+      color: #8f999f;
+      font-size: 13px;
+      font-weight: 650;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #43d4ad;
+      box-shadow: 0 0 14px rgba(67, 212, 173, .72);
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 440px;
+      font-size: 52px;
+      line-height: 1.04;
+      font-weight: 620;
+      letter-spacing: -.035em;
+    }
+
+    .description {
+      width: 430px;
+      margin: 22px 0 0;
+      color: #b8bec2;
+      font-size: 19px;
+      line-height: 1.52;
+      font-weight: 400;
+    }
+
+    .capabilities {
+      display: flex;
+      gap: 26px;
+      margin-top: 34px;
+      color: #e5e8e9;
+      font-size: 14px;
+      font-weight: 520;
+    }
+
+    .capability {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      white-space: nowrap;
+    }
+
+    .capability::before {
+      content: "";
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #43d4ad;
+    }
+
+    .product-window {
+      position: absolute;
+      top: 91px;
+      right: 72px;
+      width: 602px;
+      height: 474px;
+      overflow: hidden;
+      border: 1px solid #3a3f43;
+      border-radius: 8px;
+      background: #191c1f;
+      box-shadow: 0 30px 70px rgba(0,0,0,.42), 0 0 0 1px rgba(255,255,255,.025);
+    }
+
+    .window-bar {
+      position: absolute;
+      z-index: 2;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 13px;
+      border-bottom: 1px solid #303438;
+      background: #1b1e21;
+    }
+
+    .window-dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .window-dots span {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #50565b;
+    }
+
+    .window-label {
+      color: #8e979c;
+      font-family: "JetBrains Mono", Consolas, monospace;
+      font-size: 10px;
+      letter-spacing: .04em;
+    }
+
+    .dashboard-shot {
+      position: absolute;
+      top: 36px;
+      left: 0;
+      width: 100%;
+      height: calc(100% - 36px);
+      object-fit: cover;
+      object-position: 12% 0;
+    }
+
+    .window-sheen {
+      position: absolute;
+      z-index: 3;
+      inset: 36px 0 0;
+      border-top: 1px solid rgba(255,255,255,.035);
+      pointer-events: none;
+    }
+
+    .footer-note {
+      position: absolute;
+      left: 72px;
+      bottom: 48px;
+      color: #747e84;
+      font-size: 13px;
+      letter-spacing: .02em;
+    }
+
+    .footer-note strong {
+      color: #9fa7ab;
+      font-weight: 540;
+    }
+  </style>
+</head>
+<body>
+  <main class="artboard">
+    <div class="brand">
+      <div class="qist-logo" aria-label="Qist"></div>
+      <div class="brand-divider"></div>
+      <div class="brand-note">IT financial operations</div>
+    </div>
+
+    <section class="copy">
+      <div class="eyebrow"><span class="eyebrow-dot"></span>ITSM cost intelligence</div>
+      <h1>Showback and chargeback, made clear.</h1>
+      <p class="description">Turn service desk exports into transparent departmental costs, SLA impact analysis, and executive-ready reports.</p>
+      <div class="capabilities">
+        <span class="capability">CSV + JSON</span>
+        <span class="capability">Client-side</span>
+        <span class="capability">PDF + CSV export</span>
+      </div>
+    </section>
+
+    <section class="product-window" aria-label="Qist dashboard preview">
+      <div class="window-bar">
+        <div class="window-dots"><span></span><span></span><span></span></div>
+        <div class="window-label">QIST / EXECUTIVE OVERVIEW</div>
+      </div>
+      <img class="dashboard-shot" src="screenshots/dashboard-dark.png" alt="Qist executive dashboard">
+      <div class="window-sheen"></div>
+    </section>
+
+    <div class="footer-note">Open source software by <strong>ASK Andalus</strong></div>
+  </main>
+</body>
+</html>
