@@ -11,6 +11,7 @@ The name **Qist** was chosen to signal fairness and measured allocation: each de
 - Client-side only: no backend, database, account, or telemetry.
 - Realistic mock ITSM data loads on launch so the dashboard is immediately usable.
 - CSV and JSON uploader with smart field mapping for common ticket export columns.
+- Import Readiness validation for missing mappings, invalid rows, duplicate ticket IDs, and departments without configured allocation data.
 - Configurable departments, headcount, hourly rates, flat fees, SLA multipliers, after-hours rules, asset rates, license rates, PHI/compliance surcharges, e-waste charges, and shared overhead.
 - Showback/chargeback mode switch for informational reporting or ledger-style recovery views.
 - Executive dashboard with aligned recovery metrics, weekly/monthly cost trends, department mix, highest-spend departments, and recent ticket activity.
@@ -61,7 +62,7 @@ http://127.0.0.1:4173/index.html
 ## How To Use
 
 1. Start on **Dashboard** to review total modeled recovery, top departments, spend trends, SLA exposure, and recent ticket activity. Use the **Weekly / Monthly** trend toggle to inspect a single monthly import by week or summarize longer datasets by month.
-2. Go to **Log Upload** to drag in a CSV or JSON ticket export. Qist detects common column names and lets you inspect the mapping before analysis.
+2. Go to **Log Upload** to drag in a CSV or JSON ticket export. Qist detects common column names and lets you inspect the mapping and Import Readiness result before analysis.
 3. Choose **Save Current Import** in Import History if the dataset should be retained on this device. Saved imports auto-restore on future visits and can be loaded or deleted at any time.
 4. Use **Rate Settings** to tune labor rates, flat fees, SLA multipliers, asset/license subscriptions, compliance surcharges, and overhead allocation.
 5. Open **Appearance** to add the end user's organization name, division, address, prepared-by details, contact information, and logo.
@@ -83,13 +84,17 @@ Qist accepts CSV or JSON arrays. Column names are normalized, so common variatio
 | `sensitivity` | General IT, Clinical Systems, EMR/PACS, Security Incident, PHI, etc. |
 | `assets` | Asset IDs associated with the ticket |
 | `deviceTypes` | Workstation, Clinical Cart, Mobile / Telemetry, SaaS Seat, etc. |
-| `hours` | Time spent on the ticket |
-| `slaStatus` | Met or Breached |
+| `hours` | Decimal hours, `HH:MM`, `1h 30m`, or numeric minutes/seconds when identified by the column header |
+| `slaStatus` | Met, Breached, or another recognizable pass/fail status; blanks remain Unknown |
 | `tier` | Resolution tier or skill level required |
 | `projectCode` | Optional project/capital code |
 | `afterHours` | Optional after-hours/on-call flag |
 
 Sample files are included in [`sample-data/tickets.csv`](sample-data/tickets.csv) and [`sample-data/tickets.json`](sample-data/tickets.json).
+
+For the complete import contract, accepted formats, validation behavior, reporting-period guidance, and a worked billing example, see [`docs/DATA_SCHEMA.md`](docs/DATA_SCHEMA.md).
+
+Maintainers can use [`docs/VERIFICATION.md`](docs/VERIFICATION.md) for the parser, calculation, settings, persistence, analytics, and export regression checklist.
 
 ## Calculation Model
 
@@ -102,7 +107,7 @@ Department spend =
   + shared overhead allocation
   + sensitivity/compliance surcharges
   + after-hours mobilization charges
-  + SLA credits or penalties
+  + SLA breach credits
 ```
 
 Ticket support cost can use flat tier fees or hourly calculation:
@@ -112,6 +117,8 @@ ticket cost = hours x skill rate x priority/SLA multiplier
 ```
 
 Shared overhead is allocated by department headcount, making enterprise infrastructure cost visible without hiding assumptions.
+
+Use one reporting period per finance-ready import. Period-level asset subscriptions and shared overhead are allocated once to the active dataset, while weekly/monthly charts show actual gross and net ticket support cost for the dates in the file.
 
 ## Exporting
 
@@ -144,6 +151,8 @@ This is a static web app. To publish it with GitHub Pages:
 +-- assets/
 |   `-- qistlogo-mask.svg
 +-- docs/
+|   +-- DATA_SCHEMA.md
+|   +-- VERIFICATION.md
 |   +-- WRITEUP.md
 |   `-- screenshots/
 +-- sample-data/

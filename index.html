@@ -4823,6 +4823,27 @@
       box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
     }
 
+    .mode-toggle {
+      flex: 0 0 auto;
+      min-height: 34px;
+      background: color-mix(in srgb, var(--surface-2) 78%, transparent);
+      border-color: color-mix(in srgb, var(--hairline-strong) 78%, transparent);
+    }
+
+    .mode-toggle button {
+      min-height: 28px;
+      padding: 0 11px;
+      color: var(--main-muted);
+      font-size: 11px;
+      font-weight: 570;
+    }
+
+    .mode-toggle button.active {
+      color: var(--main-ink);
+      background: var(--surface-1);
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+    }
+
     .import-history {
       display: grid;
       gap: 12px;
@@ -4830,6 +4851,67 @@
       border: 1px solid color-mix(in srgb, var(--hairline-strong) 78%, transparent);
       border-radius: 8px;
       background: color-mix(in srgb, var(--surface-1) 84%, transparent);
+    }
+
+    .import-quality {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+      padding: 12px 14px;
+      border: 1px solid color-mix(in srgb, var(--hairline-strong) 78%, transparent);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--surface-2) 72%, transparent);
+    }
+
+    .import-quality-head,
+    .import-quality-summary {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+    }
+
+    .import-quality-head strong {
+      color: var(--main-ink);
+      font-size: 12px;
+      font-weight: 640;
+    }
+
+    .quality-dot {
+      width: 7px;
+      height: 7px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 12%, transparent), 0 0 10px color-mix(in srgb, var(--green) 42%, transparent);
+    }
+
+    .import-quality.review .quality-dot {
+      background: var(--amber);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber) 12%, transparent), 0 0 10px color-mix(in srgb, var(--amber) 42%, transparent);
+    }
+
+    .import-quality.blocked .quality-dot {
+      background: var(--rose);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--rose) 12%, transparent), 0 0 10px color-mix(in srgb, var(--rose) 42%, transparent);
+    }
+
+    .import-quality-summary,
+    .import-quality-detail {
+      color: var(--main-muted);
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    .import-quality-summary span + span::before {
+      content: "";
+      display: inline-block;
+      width: 3px;
+      height: 3px;
+      margin: 0 8px 2px 0;
+      border-radius: 50%;
+      background: var(--main-muted);
+      opacity: .65;
     }
 
     .import-history-head {
@@ -5588,7 +5670,7 @@
       { key: "sensitivity", label: "Sensitivity / Type", aliases: ["sensitivity", "type", "ticket type", "category", "service", "service category", "classification"] },
       { key: "assets", label: "Assets Associated", aliases: ["assets associated", "asset ids", "asset id", "assets", "configuration item", "ci", "device ids"] },
       { key: "deviceTypes", label: "Device Types", aliases: ["device types", "device type", "asset type", "asset category", "hardware type", "device"] },
-      { key: "hours", label: "Hours / Time Spent", required: true, aliases: ["hours", "time spent", "work hours", "duration hours", "time worked", "labor hours", "effort"] },
+      { key: "hours", label: "Hours / Time Spent", required: true, aliases: ["hours", "time spent", "work hours", "duration hours", "duration minutes", "duration seconds", "minutes spent", "work minutes", "elapsed time", "time worked", "labor hours", "effort"] },
       { key: "slaStatus", label: "SLA Status", aliases: ["sla status", "sla", "breach status", "met breached", "service level"] },
       { key: "tier", label: "Resolution Tier / Skill", aliases: ["resolution tier", "skill level", "tier", "support tier", "assignment group", "resolver group", "skill"] },
       { key: "projectCode", label: "Project Code", aliases: ["project code", "project", "capex code", "capital project", "project id", "initiative"] },
@@ -5692,6 +5774,7 @@
       trendGranularity: "weekly",
       selectedDepartment: "ER",
       filters: { search: "", department: "All", priority: "All", sensitivity: "All" },
+      dataQuality: null,
       tickets: [],
       summaries: [],
       trend: []
@@ -6031,8 +6114,32 @@
 
     function parseNumber(value, fallback = 0) {
       if (typeof value === "number") return Number.isFinite(value) ? value : fallback;
-      const parsed = Number(String(value ?? "").replace(/[$,%\s]/g, ""));
+      const parsed = Number(String(value ?? "").replace(/[$,%\s,]/g, ""));
       return Number.isFinite(parsed) ? parsed : fallback;
+    }
+
+    function parseHours(value, sourceHeader = "") {
+      if (typeof value === "number") return Number.isFinite(value) ? value : Number.NaN;
+      const text = String(value ?? "").trim().toLowerCase();
+      if (!text) return Number.NaN;
+
+      const clock = text.match(/^(\d{1,4}):([0-5]\d)(?::([0-5]\d))?$/);
+      if (clock) {
+        return Number(clock[1]) + Number(clock[2]) / 60 + Number(clock[3] || 0) / 3600;
+      }
+
+      const hoursPart = text.match(/(-?\d+(?:\.\d+)?)\s*(?:h|hr|hrs|hour|hours)\b/);
+      const minutesPart = text.match(/(-?\d+(?:\.\d+)?)\s*(?:m|min|mins|minute|minutes)\b/);
+      if (hoursPart || minutesPart) {
+        return Number(hoursPart?.[1] || 0) + Number(minutesPart?.[1] || 0) / 60;
+      }
+
+      const parsed = Number(text.replace(/[\s,]/g, ""));
+      if (!Number.isFinite(parsed)) return Number.NaN;
+      const header = normalizeHeader(sourceHeader);
+      if (/minute|min/.test(header)) return parsed / 60;
+      if (/second|sec/.test(header)) return parsed / 3600;
+      return parsed;
     }
 
     function normalizeHeader(value) {
@@ -6076,9 +6183,9 @@
 
     function normalizePriority(value) {
       const text = String(value ?? "").toLowerCase();
-      if (/critical|emergency|life|sev\s*1|p1/.test(text)) return "Critical";
-      if (/high|urgent|sev\s*2|p2/.test(text)) return "High";
-      if (/medium|normal|sev\s*3|p3/.test(text)) return "Medium";
+      if (/critical|emergency|life|\bsev\s*1\b|\bp\s*1\b/.test(text)) return "Critical";
+      if (/high|urgent|\bsev\s*2\b|\bp\s*2\b/.test(text)) return "High";
+      if (/medium|normal|\bsev\s*3\b|\bp\s*3\b/.test(text)) return "Medium";
       return "Low";
     }
 
@@ -6139,11 +6246,16 @@
     }
 
     function isAfterHours(value) {
-      return /yes|true|after|on.?call|off.?hours|y\b|1/.test(String(value ?? "").toLowerCase());
+      const text = String(value ?? "").trim().toLowerCase();
+      if (!text || /^(?:no|false|0|n|regular|business hours?|standard)$/.test(text)) return false;
+      return /^(?:yes|true|1|y)$|\bafter[ -]?hours?\b|\bon[ -]?call\b|\boff[ -]?hours?\b/.test(text);
     }
 
-    function isBreached(value) {
-      return /breach|miss|violat|fail|late/.test(String(value ?? "").toLowerCase());
+    function normalizeSlaStatus(value) {
+      const text = String(value ?? "").trim().toLowerCase();
+      if (/breach|miss|violat|fail|late|not met/.test(text)) return "Breached";
+      if (/\bmet\b|pass|within|compliant|achieved|success/.test(text)) return "Met";
+      return "Unknown";
     }
 
     function isSensitive(value) {
@@ -6207,6 +6319,57 @@
       return granularity === "weekly" ? ticket.week : ticket.month;
     }
 
+    function evaluateImportQuality() {
+      const missingMappings = fieldDefinitions
+        .filter((field) => field.required)
+        .filter((field) => !state.mapping[field.key] || !state.headers.includes(state.mapping[field.key]))
+        .map((field) => field.label);
+      const acceptedRows = [];
+      const invalidRows = [];
+      const unknownDepartments = new Set();
+      const duplicateTicketIds = new Set();
+      const seenTicketIds = new Set();
+
+      if (!missingMappings.length) {
+        state.rawRows.forEach((row, index) => {
+          const issues = [];
+          const ticketId = String(getMappedValue(row, "ticketId") || "").trim();
+          const createdDate = getMappedValue(row, "createdDate");
+          const department = String(getMappedValue(row, "department") || "").trim();
+          const rawHours = getMappedValue(row, "hours");
+          const hours = parseHours(rawHours, state.mapping.hours);
+
+          if (!ticketId) issues.push("ticket ID");
+          if (!createdDate || !parseDateValue(createdDate)) issues.push("created date");
+          if (!department) issues.push("department");
+          if (rawHours === "" || !Number.isFinite(hours) || hours < 0) issues.push("hours");
+
+          if (issues.length) {
+            invalidRows.push({ row: index + 2, issues });
+            return;
+          }
+
+          const normalizedId = ticketId.toLowerCase();
+          if (seenTicketIds.has(normalizedId)) duplicateTicketIds.add(ticketId);
+          seenTicketIds.add(normalizedId);
+
+          const matchedDepartment = state.config.departments.some((dept) =>
+            dept.name.toLowerCase() === department.toLowerCase() || dept.costCenter.toLowerCase() === department.toLowerCase()
+          );
+          if (!matchedDepartment) unknownDepartments.add(department);
+          acceptedRows.push({ row, index });
+        });
+      }
+
+      return {
+        acceptedRows,
+        missingMappings,
+        invalidRows,
+        unknownDepartments: Array.from(unknownDepartments).sort(),
+        duplicateTicketIds: Array.from(duplicateTicketIds).sort()
+      };
+    }
+
     function computeTicket(row, index) {
       const rawPriority = getMappedValue(row, "priority") || "Low";
       const createdDate = String(getMappedValue(row, "createdDate") || "");
@@ -6215,9 +6378,11 @@
       const tier = normalizeTier(getMappedValue(row, "tier"), sensitivity);
       const priority = normalizePriority(rawPriority);
       const priorityRule = priorityConfig(priority);
-      const hours = Math.max(0, parseNumber(getMappedValue(row, "hours")));
+      const parsedHours = parseHours(getMappedValue(row, "hours"), state.mapping.hours);
+      const hours = Math.max(0, Number.isFinite(parsedHours) ? parsedHours : 0);
       const afterHours = isAfterHours(getMappedValue(row, "afterHours"));
-      const breached = isBreached(getMappedValue(row, "slaStatus"));
+      const slaStatus = normalizeSlaStatus(getMappedValue(row, "slaStatus"));
+      const breached = slaStatus === "Breached";
       const sensitive = isSensitive(sensitivity);
       const billedHours = state.config.flatFeeMode ? hours : (afterHours ? Math.max(hours, state.config.afterHours.minimumHours) : hours);
       const rate = rateForTier(tier);
@@ -6243,7 +6408,7 @@
         deviceTypes,
         hours,
         billedHours,
-        slaStatus: breached ? "Breached" : "Met",
+        slaStatus,
         breached,
         tier,
         tierName: tierLabel(tier),
@@ -6262,16 +6427,26 @@
     }
 
     function departmentAssetCosts(dept) {
-      const assetSubscription =
+      const managedAssetSubscription =
         parseNumber(dept.workstations) * state.config.assetRates.workstation +
-        parseNumber(dept.carts) * state.config.assetRates.mobileCart +
-        parseNumber(dept.seats) * state.config.assetRates.saasSeat;
+        parseNumber(dept.carts) * state.config.assetRates.mobileCart;
+      const licenseSubscription = parseNumber(dept.seats) * state.config.assetRates.saasSeat;
+      const assetSubscription = managedAssetSubscription + licenseSubscription;
       const eWaste = parseNumber(dept.eWasteAssets) * state.config.fees.eWasteAssetFee;
-      return { assetSubscription, eWaste, total: assetSubscription + eWaste };
+      return { managedAssetSubscription, licenseSubscription, assetSubscription, eWaste, total: assetSubscription + eWaste };
     }
 
     function aggregate() {
-      state.tickets = state.rawRows.map((row, index) => computeTicket(row, index));
+      const quality = evaluateImportQuality();
+      state.tickets = quality.acceptedRows.map(({ row, index }) => computeTicket(row, index));
+      state.dataQuality = {
+        missingMappings: quality.missingMappings,
+        invalidRows: quality.invalidRows,
+        unknownDepartments: quality.unknownDepartments,
+        duplicateTicketIds: quality.duplicateTicketIds,
+        acceptedCount: quality.acceptedRows.length,
+        rawCount: state.rawRows.length
+      };
       const totalHeadcount = Math.max(1, state.config.departments.reduce((sum, dept) => sum + parseNumber(dept.headcount), 0));
       const map = new Map();
 
@@ -6339,13 +6514,15 @@
         return {
           ...summary,
           assetSubscription: assetCosts.assetSubscription,
+          managedAssetSubscription: assetCosts.managedAssetSubscription,
+          licenseSubscription: assetCosts.licenseSubscription,
           eWaste: assetCosts.eWaste,
           assetCost: assetCosts.total,
           overhead,
           ticketTotal,
           total,
           breachRate: summary.ticketCount ? summary.breaches / summary.ticketCount * 100 : 0,
-          assetDensity: deviceUnits ? assetCosts.total / deviceUnits : 0
+          assetDensity: deviceUnits ? assetCosts.managedAssetSubscription / deviceUnits : 0
         };
       }).sort((a, b) => b.total - a.total);
 
@@ -6456,10 +6633,12 @@
       const trendMap = new Map();
       tickets.forEach((ticket) => {
         const key = trendKeyForTicket(ticket, granularity) || "Unknown";
-        if (!trendMap.has(key)) trendMap.set(key, { key, label: trendPeriodLabel(key, granularity), tickets: 0, cost: 0, hours: 0 });
+        if (!trendMap.has(key)) trendMap.set(key, { key, label: trendPeriodLabel(key, granularity), tickets: 0, grossCost: 0, cost: 0, slaImpact: 0, hours: 0 });
         const bucket = trendMap.get(key);
         bucket.tickets += 1;
+        bucket.grossCost += ticket.supportCost + ticket.sensitivitySurcharge;
         bucket.cost += ticket.ticketTotal;
+        bucket.slaImpact += ticket.slaImpact;
         bucket.hours += ticket.billedHours;
       });
       return Array.from(trendMap.values()).sort((a, b) => a.key.localeCompare(b.key));
@@ -6523,7 +6702,7 @@
           {
             number: "03",
             title: "Prepare the ticket export",
-            text: "Export one row per ticket from your ITSM platform as CSV or JSON. At minimum, include a ticket ID, created date, department, and time spent. Additional fields make the allocation more precise.",
+            text: "Export one completed reporting period with one row per ticket as CSV or JSON. At minimum, include a ticket ID, created date, department, and time spent. Additional fields make the allocation more precise.",
             action: "Open Log Upload",
             view: "tickets",
             keywords: "csv json export schema ticket id created date department hours time spent servicenow jira itsm"
@@ -6531,7 +6710,7 @@
           {
             number: "04",
             title: "Map and verify the data",
-            text: "Drop the file into Log Upload and review Qist's suggested column mapping. Correct any unmatched columns, check the calculated preview, then save the import if you want it available on this device later.",
+            text: "Drop the file into Log Upload, review Qist's suggested mapping, and confirm Import Readiness. Resolve excluded rows and unmapped departments before exporting, then save the import if you want it available on this device later.",
             action: "Review mappings",
             view: "tickets",
             keywords: "mapping validate columns preview save import local device browser history"
@@ -6726,7 +6905,11 @@
               ` : ""}
             </div>
             <div class="header-actions">
-              <button class="btn" type="button" data-action="export-pdf">Export PDF</button>
+              <div class="segmented mode-toggle" role="group" aria-label="Report mode">
+                <button class="${state.mode === "showback" ? "active" : ""}" type="button" data-mode="showback" aria-pressed="${state.mode === "showback"}">Showback</button>
+                <button class="${state.mode === "chargeback" ? "active" : ""}" type="button" data-mode="chargeback" aria-pressed="${state.mode === "chargeback"}">Chargeback</button>
+              </div>
+              <button class="btn" type="button" data-action="export-pdf" ${state.tickets.length ? "" : "disabled"}>Export PDF</button>
               <button class="theme-toggle" type="button" data-action="toggle-theme" data-theme-state="${state.theme}" aria-label="Switch to ${state.theme === "dark" ? "light" : "dark"} mode" aria-pressed="${state.theme === "dark"}">
                 <span class="theme-rail" aria-hidden="true">
                   <span class="theme-icon theme-icon-light"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.6"></circle><path d="M12 2.8v2.2M12 19v2.2M4.93 4.93l1.56 1.56M17.51 17.51l1.56 1.56M2.8 12h2.2M19 12h2.2M4.93 19.07l1.56-1.56M17.51 6.49l1.56-1.56"></path></svg></span>
@@ -6786,7 +6969,7 @@
     }
 
     function renderOverview(summary) {
-      const avg = summary.tickets ? summary.total / summary.tickets : 0;
+      const avg = summary.tickets ? summary.ticketTotal / summary.tickets : 0;
       const breachRate = summary.tickets ? summary.breaches / summary.tickets * 100 : 0;
       const query = activeSearch();
       const tokens = searchTokens(state.globalSearch);
@@ -6832,7 +7015,7 @@
             <div class="dashboard-primary">
               <div class="chart-panel">
                 <div class="section-title-row">
-                  <h2>${query ? `Matched ${trendLabel.toLowerCase()} cost trend` : `${trendLabel} cost trend`}</h2>
+                  <h2>${query ? `Matched ${trendLabel.toLowerCase()} ticket cost trend` : `${trendLabel} ticket cost trend`}</h2>
                   <div class="segmented trend-toggle" role="group" aria-label="Trend interval">
                     <button class="${state.trendGranularity === "weekly" ? "active" : ""}" type="button" data-trend-granularity="weekly" aria-pressed="${state.trendGranularity === "weekly"}">Weekly</button>
                     <button class="${state.trendGranularity === "monthly" ? "active" : ""}" type="button" data-trend-granularity="monthly" aria-pressed="${state.trendGranularity === "monthly"}">Monthly</button>
@@ -6887,13 +7070,13 @@
           </div>
           <div class="rail-value">${moneyPrecise(summary.total)}</div>
           <div class="rail-stats">
-            <div>Total Hours<strong>${number(summary.hours, 1)}</strong></div>
-            <div>Avg Ticket<strong>${money(avg)}</strong></div>
+            <div>Billed Hours<strong>${number(summary.hours, 1)}</strong></div>
+            <div>Avg Ticket Cost<strong>${money(avg)}</strong></div>
             <div>SLA Risk<strong>${percent(breachRate)}</strong></div>
           </div>
           <div class="rail-actions">
-            <button class="btn primary" type="button" data-action="export-pdf">Export PDF</button>
-            <button class="btn" type="button" data-action="export-dept-csv">Ledger CSV</button>
+            <button class="btn primary" type="button" data-action="export-pdf" ${state.tickets.length ? "" : "disabled"}>Export PDF</button>
+            <button class="btn" type="button" data-action="export-dept-csv" ${state.tickets.length ? "" : "disabled"}>Ledger CSV</button>
           </div>
         </article>
       `;
@@ -6970,7 +7153,7 @@
                   <td><strong>${html(ticket.id)}</strong><br><span class="muted">${html(ticket.department)} | ${html(ticket.tierName)}</span></td>
                   <td>${html(ticket.createdDate)}</td>
                   <td class="numeric amount">${moneyPrecise(ticket.ticketTotal)}</td>
-                  <td><span class="pill ${ticket.breached ? "rose" : "green"}">${ticket.breached ? "Breached" : "Met SLA"}</span></td>
+                  <td><span class="pill ${ticket.breached ? "rose" : (ticket.slaStatus === "Met" ? "green" : "amber")}">${ticket.breached ? "Breached" : (ticket.slaStatus === "Met" ? "Met SLA" : "Unknown SLA")}</span></td>
                 </tr>
               `).join("")}
             </tbody>
@@ -7025,6 +7208,39 @@
       }, "");
     }
 
+    function renderImportQuality() {
+      const quality = state.dataQuality || {
+        missingMappings: [], invalidRows: [], unknownDepartments: [], duplicateTicketIds: [], acceptedCount: 0, rawCount: state.rawRows.length
+      };
+      const blocked = quality.missingMappings.length > 0 || quality.acceptedCount === 0;
+      const review = !blocked && (quality.invalidRows.length || quality.unknownDepartments.length || quality.duplicateTicketIds.length);
+      const tone = blocked ? "blocked" : (review ? "review" : "ready");
+      const title = blocked ? "Mapping incomplete" : (review ? "Ready with review items" : "Ready for calculation");
+      const details = [];
+
+      if (quality.missingMappings.length) details.push(`Map required fields: ${quality.missingMappings.join(", ")}.`);
+      if (quality.invalidRows.length) {
+        const examples = quality.invalidRows.slice(0, 3).map((item) => `row ${item.row} (${item.issues.join(", ")})`).join("; ");
+        details.push(`${quality.invalidRows.length} invalid ${quality.invalidRows.length === 1 ? "row was" : "rows were"} excluded: ${examples}${quality.invalidRows.length > 3 ? "; more" : ""}.`);
+      }
+      if (quality.unknownDepartments.length) details.push(`Unmapped departments receive no configured assets or overhead: ${quality.unknownDepartments.join(", ")}.`);
+      if (quality.duplicateTicketIds.length) details.push(`Duplicate ticket IDs remain separate billing rows: ${quality.duplicateTicketIds.join(", ")}.`);
+      if (!details.length) details.push("Required fields are mapped and every row passed validation.");
+
+      return `
+        <section class="import-quality ${tone}" aria-label="Import readiness" aria-live="polite">
+          <div class="import-quality-head"><span class="quality-dot"></span><strong>${title}</strong></div>
+          <div class="import-quality-summary">
+            <span>${quality.acceptedCount} accepted</span>
+            <span>${quality.invalidRows.length} excluded</span>
+            <span>${quality.unknownDepartments.length} unmapped departments</span>
+            <span>${quality.duplicateTicketIds.length} duplicate IDs</span>
+          </div>
+          <div class="import-quality-detail">${html(details.join(" "))}</div>
+        </section>
+      `;
+    }
+
     function renderUploadPanel() {
       return `
         <div class="upload-panel">
@@ -7041,6 +7257,7 @@
             </div>
           </div>
           <input id="fileInput" class="file-input" type="file" accept=".csv,.json,application/json,text/csv">
+          ${renderImportQuality()}
           <details>
             <summary><strong>Column Mapping</strong> <span class="muted">(${state.headers.length} detected columns)</span></summary>
             <div class="mapping-grid">
@@ -7152,13 +7369,13 @@
       const innerWidth = width - padding.left - padding.right;
       const innerHeight = height - padding.top - padding.bottom;
       const maxTickets = Math.max(...points.map((point) => point.tickets), 1);
-      const baseline = points.map((point, index) => point.cost * (0.84 + (index % 3) * 0.055) + point.tickets * 115);
-      const rawMax = Math.max(...points.map((point) => point.cost), ...baseline, 1);
+      const grossCosts = points.map((point) => point.grossCost);
+      const rawMax = Math.max(...points.map((point) => point.cost), ...grossCosts, 1);
       const axisMax = Math.max(8000, Math.ceil(rawMax / 8000) * 8000);
       const xFor = (index) => padding.left + (points.length > 1 ? index * (innerWidth / (points.length - 1)) : innerWidth / 2);
       const yFor = (value) => padding.top + innerHeight - (value / axisMax * innerHeight);
       const billablePoints = points.map((point, index) => [xFor(index), yFor(point.cost)]);
-      const demandPoints = baseline.map((value, index) => [xFor(index), yFor(value)]);
+      const demandPoints = grossCosts.map((value, index) => [xFor(index), yFor(value)]);
       const billablePath = smoothPath(billablePoints);
       const demandPath = smoothPath(demandPoints);
       const grid = [0, 0.25, 0.5, 0.75, 1].map((ratio) => {
@@ -7187,16 +7404,16 @@
       const marker = billablePoints[markerIndex];
       const demandMarker = demandPoints[markerIndex];
       const point = points[markerIndex];
-      const demandValue = baseline[markerIndex];
-      const delta = demandValue ? (point.cost - demandValue) / demandValue * 100 : 0;
+      const grossValue = grossCosts[markerIndex];
+      const delta = point.cost - grossValue;
       const tooltipWidth = 176;
       const tooltipHeight = 68;
       const tooltipX = Math.min(width - padding.right - tooltipWidth, Math.max(padding.left + 12, marker[0] + 18));
       const tooltipY = Math.min(padding.top + innerHeight - tooltipHeight - 8, Math.max(padding.top + 8, marker[1] - 48));
       const billableDots = billablePoints.map((dot, index) => `<circle class="line-dot billable-dot" cx="${dot[0]}" cy="${dot[1]}" r="4.5"><title>${svgText(points[index].label + ": " + money(points[index].cost))}</title></circle>`).join("");
-      const demandDots = demandPoints.map((dot, index) => `<circle class="line-dot demand-dot" cx="${dot[0]}" cy="${dot[1]}" r="3.8"><title>${svgText(points[index].label + ": " + money(baseline[index]))}</title></circle>`).join("");
+      const demandDots = demandPoints.map((dot, index) => `<circle class="line-dot demand-dot" cx="${dot[0]}" cy="${dot[1]}" r="3.8"><title>${svgText(points[index].label + " gross support: " + money(grossCosts[index]))}</title></circle>`).join("");
       return `
-        <svg class="chart trend-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Ticket volume, demand baseline, and recovered cost trend">
+        <svg class="chart trend-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Ticket volume, gross support cost, and net recovered cost trend">
           ${grid}
           ${bars}
           <path class="trend-line demand-line" d="${demandPath}"></path>
@@ -7210,17 +7427,17 @@
             <rect x="${tooltipX}" y="${tooltipY}" width="${tooltipWidth}" height="${tooltipHeight}" rx="8"></rect>
             <text class="tooltip-date" x="${tooltipX + 13}" y="${tooltipY + 21}">${svgText(point.label)}</text>
             <rect class="legend-square demand" x="${tooltipX + 13}" y="${tooltipY + 34}" width="7" height="7" rx="1.5"></rect>
-            <text class="tooltip-value" x="${tooltipX + 27}" y="${tooltipY + 41}">${svgText(money(point.cost))}</text>
-            <text class="tooltip-delta down" x="${tooltipX + 120}" y="${tooltipY + 41}">${svgText(percent(delta))}</text>
+            <text class="tooltip-value" x="${tooltipX + 27}" y="${tooltipY + 41}">${svgText(money(grossValue))}</text>
+            <text class="tooltip-delta" x="${tooltipX + 120}" y="${tooltipY + 41}">gross</text>
             <rect class="legend-square billable" x="${tooltipX + 13}" y="${tooltipY + 51}" width="7" height="7" rx="1.5"></rect>
-            <text class="tooltip-value" x="${tooltipX + 27}" y="${tooltipY + 58}">${svgText(money(demandValue))}</text>
-            <text class="tooltip-delta" x="${tooltipX + 120}" y="${tooltipY + 58}">+${svgText(percent(Math.abs(delta) / 2))}</text>
+            <text class="tooltip-value" x="${tooltipX + 27}" y="${tooltipY + 58}">${svgText(money(point.cost))}</text>
+            <text class="tooltip-delta ${delta < 0 ? "down" : ""}" x="${tooltipX + 120}" y="${tooltipY + 58}">${svgText(delta ? money(delta) : "net")}</text>
           </g>
           ${labels}
         </svg>
         <div class="legend">
-          <span class="legend-item"><span class="swatch swatch-demand"></span>Demand baseline</span>
-          <span class="legend-item"><span class="swatch swatch-billable"></span>Recovered cost</span>
+          <span class="legend-item"><span class="swatch swatch-demand"></span>Gross support</span>
+          <span class="legend-item"><span class="swatch swatch-billable"></span>Net recovered</span>
           <span class="legend-item"><span class="swatch swatch-volume"></span>Ticket volume</span>
         </div>
       `;
@@ -7342,7 +7559,7 @@
               ${renderKpi("Department Total", money(selected.total), selected.costCenter, "blue")}
               ${renderKpi("Support Hours", number(selected.billedHours, 1), `${selected.ticketCount} tickets`, "green")}
               ${renderKpi("SLA Breach Rate", percent(selected.breachRate), `${selected.breaches} breached tickets`, "rose")}
-              ${renderKpi("Asset Density", moneyPrecise(selected.assetDensity), "Monthly asset cost per workstation/cart", "amber")}
+              ${renderKpi("Asset Density", moneyPrecise(selected.assetDensity), "Monthly workstation/cart cost per managed device", "amber")}
             </section>
           </div>
 
@@ -7521,7 +7738,7 @@
                   <td>${html(ticket.sensitivity)}<br><span class="muted">${ticket.assets.length} assets</span></td>
                   <td>${html(ticket.tierName)}<br><span class="muted">${state.config.flatFeeMode ? "flat fee" : moneyPrecise(ticket.rate) + "/hr"}</span></td>
                   <td class="numeric">${number(ticket.billedHours, 1)}</td>
-                  <td><span class="pill ${ticket.breached ? "rose" : "green"}">${ticket.slaStatus}</span></td>
+                  <td><span class="pill ${ticket.breached ? "rose" : (ticket.slaStatus === "Met" ? "green" : "amber")}">${ticket.slaStatus}</span></td>
                   ${compact ? "" : `<td>${html(ticket.projectCode || "Operational")}</td>`}
                   <td class="numeric amount">${moneyPrecise(ticket.ticketTotal)}</td>
                 </tr>
@@ -7828,9 +8045,9 @@
                 <section class="guide-aside-section">
                   <span class="guide-aside-label">A sensible monthly routine</span>
                   <ol class="monthly-list">
-                    <li>Export the completed reporting period from your ITSM platform.</li>
-                    <li>Load the file and confirm the suggested column mapping.</li>
-                    <li>Review unusually high costs, SLA credits, and unmapped departments.</li>
+                    <li>Export one completed reporting period from your ITSM platform.</li>
+                    <li>Load the file and confirm the suggested mapping and Import Readiness result.</li>
+                    <li>Resolve excluded rows, duplicate IDs, unusual costs, SLA credits, and unmapped departments.</li>
                     <li>Save the import locally, then export the executive PDF and finance CSV.</li>
                   </ol>
                 </section>
@@ -7863,7 +8080,7 @@
                 <p class="panel-subtitle">Set the organization identity used in Qist executive PDF reports.</p>
               </div>
               <div class="inline-actions">
-                <button class="btn" type="button" data-action="export-pdf">Preview PDF Report</button>
+                <button class="btn" type="button" data-action="export-pdf" ${state.tickets.length ? "" : "disabled"}>Preview PDF Report</button>
                 <button class="btn ghost" type="button" data-action="reset-appearance">Reset Appearance</button>
               </div>
             </div>
@@ -7971,10 +8188,11 @@
     }
 
     function configInput(path, label) {
+      const maximum = /Pct$/.test(path) ? ' max="100"' : "";
       return `
         <div class="field">
           <label>${label}</label>
-          <input class="input" type="number" min="0" step="0.01" value="${html(getConfigPath(path))}" data-config-path="${path}">
+          <input class="input" type="number" min="0"${maximum} step="0.01" value="${html(getConfigPath(path))}" data-config-path="${path}">
         </div>
       `;
     }
@@ -8004,9 +8222,9 @@
                 <p class="panel-subtitle">Download executive and invoice-ready outputs from the current model.</p>
               </div>
               <div class="inline-actions">
-                <button class="btn primary" type="button" data-action="export-pdf">Open Executive PDF</button>
-                <button class="btn" type="button" data-action="export-dept-csv">Department CSV</button>
-                <button class="btn" type="button" data-action="export-ticket-csv">Ticket CSV</button>
+                <button class="btn primary" type="button" data-action="export-pdf" ${state.tickets.length ? "" : "disabled"}>Open Executive PDF</button>
+                <button class="btn" type="button" data-action="export-dept-csv" ${state.tickets.length ? "" : "disabled"}>Department CSV</button>
+                <button class="btn" type="button" data-action="export-ticket-csv" ${state.tickets.length ? "" : "disabled"}>Ticket CSV</button>
               </div>
             </div>
             <section class="kpi-grid" style="margin-bottom:0">
@@ -8195,8 +8413,15 @@
         return;
       }
       if (action === "add-department") {
-        state.config.departments.push({ name: "New Department", costCenter: "CC-0000", headcount: 1, workstations: 0, carts: 0, seats: 0, eWasteAssets: 0 });
-        state.selectedDepartment = "New Department";
+        let suffix = 1;
+        let name = "New Department";
+        while (state.config.departments.some((dept) => dept.name.toLowerCase() === name.toLowerCase())) {
+          suffix += 1;
+          name = `New Department ${suffix}`;
+        }
+        const costCenter = `CC-${String(state.config.departments.length + 1).padStart(4, "0")}`;
+        state.config.departments.push({ name, costCenter, headcount: 1, workstations: 0, carts: 0, seats: 0, eWasteAssets: 0 });
+        state.selectedDepartment = name;
         saveConfig();
         render();
       }
@@ -8262,29 +8487,46 @@
       if (target.matches("[data-dept-index]")) {
         const dept = state.config.departments[Number(target.dataset.deptIndex)];
         const field = target.dataset.deptField;
-        dept[field] = target.type === "number" ? parseNumber(target.value) : target.value.trim();
+        if (target.type !== "number") {
+          const value = target.value.trim();
+          if (!value) {
+            state.uploadStatus = `${field === "name" ? "Department name" : "Cost center"} cannot be blank.`;
+            render();
+            return;
+          }
+          if (field === "name" && state.config.departments.some((item) => item !== dept && item.name.toLowerCase() === value.toLowerCase())) {
+            state.uploadStatus = `Department name ${value} is already in use.`;
+            render();
+            return;
+          }
+          dept[field] = value;
+        } else {
+          dept[field] = Math.max(0, parseNumber(target.value));
+        }
         saveConfig();
         render();
         return;
       }
 
       if (target.matches("[data-rate-key]")) {
-        state.config.hourlyRates[target.dataset.rateKey] = parseNumber(target.value);
+        state.config.hourlyRates[target.dataset.rateKey] = Math.max(0, parseNumber(target.value));
         saveConfig();
         render();
         return;
       }
 
       if (target.matches("[data-flat-key]")) {
-        state.config.flatFees[target.dataset.flatKey] = parseNumber(target.value);
+        state.config.flatFees[target.dataset.flatKey] = Math.max(0, parseNumber(target.value));
         saveConfig();
         render();
         return;
       }
 
       if (target.matches("[data-config-path]")) {
-        const value = target.type === "checkbox" ? target.checked : parseNumber(target.value);
-        setConfigPath(target.dataset.configPath, value);
+        const path = target.dataset.configPath;
+        const parsed = Math.max(0, parseNumber(target.value));
+        const value = target.type === "checkbox" ? target.checked : (/Pct$/.test(path) ? Math.min(100, parsed) : parsed);
+        setConfigPath(path, value);
         saveConfig();
         render();
         return;
@@ -8416,11 +8658,13 @@
 
     function parseJson(text) {
       const parsed = JSON.parse(text);
-      if (Array.isArray(parsed)) return parsed;
-      if (Array.isArray(parsed.tickets)) return parsed.tickets;
-      if (Array.isArray(parsed.records)) return parsed.records;
-      if (Array.isArray(parsed.data)) return parsed.data;
-      throw new Error("JSON must be an array or contain a tickets, records, or data array");
+      const rows = Array.isArray(parsed)
+        ? parsed
+        : (Array.isArray(parsed.tickets) ? parsed.tickets : (Array.isArray(parsed.records) ? parsed.records : (Array.isArray(parsed.data) ? parsed.data : null)));
+      if (!rows) throw new Error("JSON must be an array or contain a tickets, records, or data array");
+      const invalidIndex = rows.findIndex((row) => !row || typeof row !== "object" || Array.isArray(row));
+      if (invalidIndex >= 0) throw new Error(`JSON row ${invalidIndex + 1} must be an object with named fields`);
+      return rows;
     }
 
     function parseCsv(text) {
@@ -8463,9 +8707,14 @@
 
       row.push(field);
       if (row.some((cell) => String(cell).trim() !== "")) rows.push(row);
+      if (quoted) throw new Error("CSV contains an unclosed quoted field");
       if (!rows.length) return [];
 
-      const headers = rows.shift().map((header) => String(header).trim());
+      const headers = rows.shift().map((header, index) => String(header).replace(index === 0 ? /^\uFEFF/ : /$^/, "").trim());
+      if (headers.some((header) => !header)) throw new Error("CSV contains a blank column header");
+      const normalizedHeaders = headers.map(normalizeHeader);
+      const duplicateHeader = normalizedHeaders.find((header, index) => normalizedHeaders.indexOf(header) !== index);
+      if (duplicateHeader) throw new Error("CSV contains duplicate column headers");
       return rows.map((values) => {
         const object = {};
         headers.forEach((header, index) => {
@@ -8483,7 +8732,19 @@
       return Array.from(headers);
     }
 
+    function ensureExportReady() {
+      if (state.tickets.length) return true;
+      const missing = state.dataQuality?.missingMappings || [];
+      state.uploadStatus = missing.length
+        ? `Export unavailable. Map required fields: ${missing.join(", ")}.`
+        : "Export unavailable. No valid ticket rows are available.";
+      state.activeView = "tickets";
+      render();
+      return false;
+    }
+
     function exportDepartmentCsv() {
+      if (!ensureExportReady()) return;
       const rows = [
         ["mode", "department", "cost_center", "line_item", "amount", "tickets", "hours", "breaches", "breach_rate"]
       ];
@@ -8514,6 +8775,7 @@
     }
 
     function exportTicketCsv() {
+      if (!ensureExportReady()) return;
       const rows = [
         ["mode", "ticket_id", "created_date", "closed_date", "department", "priority", "sensitivity", "assets", "device_types", "hours", "billed_hours", "sla_status", "tier", "rate", "multiplier", "after_hours", "project_code", "support_cost", "sensitivity_surcharge", "sla_impact", "billable_amount"]
       ];
@@ -8546,6 +8808,7 @@
     }
 
     function exportPdf() {
+      if (!ensureExportReady()) return;
       const summary = totals();
       const reportWindow = window.open("", "_blank", "width=1100,height=900");
       if (!reportWindow) {
@@ -8857,7 +9120,7 @@
               <td>${html(ticket.department)}</td>
               <td>${html(ticket.priority)} ${number(ticket.multiplier, 1)}x</td>
               <td>${html(ticket.tierName)}</td>
-              <td class="${ticket.breached ? "risk" : "credit"}">${html(ticket.breached ? "Breached" : "Met SLA")}</td>
+              <td class="${ticket.breached ? "risk" : (ticket.slaStatus === "Met" ? "credit" : "")}">${html(ticket.breached ? "Breached" : (ticket.slaStatus === "Met" ? "Met SLA" : "Unknown"))}</td>
               <td class="numeric amount">${moneyPrecise(ticket.ticketTotal)}</td>
             </tr>
           `).join("")}
@@ -8887,7 +9150,12 @@
     }
 
     function toCsv(rows) {
-      return rows.map((row) => row.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(",")).join("\r\n");
+      return rows.map((row) => row.map((cell) => {
+        let value = String(cell ?? "");
+        const numericText = /^-?\d+(?:\.\d+)?$/.test(value);
+        if (!numericText && (/^[=+@]/.test(value) || /^-(?!\d)/.test(value) || /^[\t\r]/.test(value))) value = "'" + value;
+        return `"${value.replace(/"/g, '""')}"`;
+      }).join(",")).join("\r\n");
     }
 
     function downloadText(filename, content, type) {

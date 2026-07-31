@@ -35,7 +35,7 @@ The Management navigation includes a **Getting Started** page that explains this
 
 2. **Load operational data**
 
-   Upload a CSV or JSON ticket export. Qist normalizes common fields such as ticket ID, dates, department, priority, sensitivity, assets, device types, hours, SLA status, tier, project code, and after-hours flag.
+   Upload a CSV or JSON ticket export. Qist normalizes common fields such as ticket ID, dates, department, priority, sensitivity, assets, device types, hours, SLA status, tier, project code, and after-hours flag. The Import Readiness check identifies missing required mappings, invalid rows, duplicate IDs, and departments that do not yet have configured allocation data.
 
 3. **Save the import when appropriate**
 
@@ -43,7 +43,7 @@ The Management navigation includes a **Getting Started** page that explains this
 
 4. **Review analytics**
 
-   The dashboard calculates total modeled spend, hours, average cost per ticket, top departments, SLA exposure, department mix, and recent ticket activity. The cost trend can switch between weekly and monthly buckets so a single monthly upload still produces a useful week-by-week operational view.
+   The dashboard calculates total modeled spend, billed hours, average net ticket cost, top departments, SLA exposure, department mix, and recent ticket activity. The ticket cost trend can switch between weekly and monthly buckets and compares actual gross support cost with actual net recovered cost after SLA credits.
 
 5. **Inspect detail**
 
@@ -64,7 +64,7 @@ Total departmental spend =
   + pro-rata shared overhead
   + sensitivity/compliance surcharges
   + after-hours charges
-  + SLA credits or penalties
+  + SLA breach credits
 ```
 
 Ticket support cost can be calculated in either of two ways:
@@ -76,11 +76,13 @@ Flat fee mode = configured resolution tier fee
 
 Additional rules are then applied:
 
-- **SLA status** can add penalties, credits, or risk exposure depending on the configured reporting model.
+- **SLA status** applies the configured breach credit and exposes breach risk in departmental reporting.
 - **After-hours support** can add mobilization surcharges and minimum billable hours.
 - **PHI or security-sensitive work** can add compliance surcharges.
 - **Assets and subscriptions** add workstation, clinical cart, mobile/telemetry, and SaaS seat costs.
 - **Shared overhead** is distributed by headcount so infrastructure costs are visible and proportionate.
+
+Finance-ready imports should contain one reporting period. Recurring asset/license subscriptions and shared overhead are allocated once to the active dataset. Ticket trend charts use dated ticket charges only, so they remain useful without implying that recurring period-level allocations repeat every week.
 
 ## Branding And Reporting
 
