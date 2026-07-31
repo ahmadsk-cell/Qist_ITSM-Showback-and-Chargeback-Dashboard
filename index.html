@@ -3770,6 +3770,12 @@
     .driver-card {
       min-height: 126px;
       gap: 11px;
+      cursor: pointer;
+    }
+
+    .card-action:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
     }
 
     .driver-copy strong {
@@ -3802,6 +3808,8 @@
     .card-action {
       color: #9aa2ab;
       border-color: #bfc5cc;
+      padding: 0;
+      cursor: pointer;
     }
 
     .rail-title h3 {
@@ -6116,13 +6124,13 @@
       const initials = item.department.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
       const costCenter = item.costCenter || "Unassigned";
       return `
-        <article class="driver-card">
+        <article class="driver-card" data-department-card="${html(item.department)}">
           <div class="driver-head">
             <div class="driver-name">
               <span class="driver-icon" style="background:${themeColor(index)}">${html(initials)}</span>
               <div class="driver-copy"><strong>${html(item.department)}</strong><span>${html(costCenter)}</span></div>
             </div>
-            <span class="card-action" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"></path><path d="M9 7h8v8"></path></svg></span>
+            <button class="card-action" type="button" aria-label="Open ${html(item.department)} department ledger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"></path><path d="M9 7h8v8"></path></svg></button>
           </div>
           <div class="driver-value">${moneyPrecise(item.total)}</div>
           <div class="driver-note">
@@ -7235,6 +7243,14 @@
     }
 
     document.addEventListener("click", async (event) => {
+      const departmentCard = event.target.closest("[data-department-card]");
+      if (departmentCard) {
+        state.selectedDepartment = departmentCard.dataset.departmentCard;
+        state.activeView = "departments";
+        render();
+        return;
+      }
+
       const viewButton = event.target.closest("[data-view]");
       if (viewButton) {
         state.activeView = viewButton.dataset.view;
