@@ -4656,6 +4656,149 @@
       outline-offset: -3px;
       box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--green) 18%, transparent);
     }
+
+    .appearance-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 14px;
+      align-items: start;
+    }
+
+    .brand-card {
+      min-height: 292px;
+      display: grid;
+      align-content: space-between;
+      gap: 18px;
+      padding: 18px;
+      border: 1px solid var(--hairline-strong);
+      border-radius: 8px;
+      background: var(--card-bg);
+      box-shadow: 0 1px 2px rgba(17, 24, 39, 0.08);
+    }
+
+    .brand-card-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .brand-card .qist-report-mark {
+      width: 82px;
+      height: 28px;
+      background: var(--logo-fill);
+      -webkit-mask: url("assets/qistlogo-mask.svg") left center / contain no-repeat;
+      mask: url("assets/qistlogo-mask.svg") left center / contain no-repeat;
+      flex: 0 0 auto;
+    }
+
+    .org-logo-frame {
+      width: 116px;
+      height: 72px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      border: 1px solid var(--hairline);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--surface-2) 68%, var(--card-bg));
+      color: var(--main-muted);
+      font-size: 11px;
+      font-weight: 520;
+      text-align: center;
+    }
+
+    .org-logo-frame img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      padding: 10px;
+    }
+
+    .brand-card-title {
+      display: grid;
+      gap: 4px;
+    }
+
+    .brand-card-title h3 {
+      margin: 0;
+      color: var(--main-ink);
+      font-size: 22px;
+      line-height: 1.12;
+      font-weight: 640;
+    }
+
+    .brand-card-title p {
+      margin: 0;
+      color: var(--main-muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .brand-card-meta {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      color: var(--main-muted);
+      font-size: 11px;
+    }
+
+    .brand-card-meta span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .logo-uploader {
+      display: grid;
+      gap: 10px;
+    }
+
+    .logo-drop {
+      display: grid;
+      place-items: center;
+      min-height: 118px;
+      padding: 18px;
+      border: 1px dashed color-mix(in srgb, var(--hairline-strong) 85%, transparent);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--surface-2) 46%, transparent);
+      color: var(--main-muted);
+      text-align: center;
+    }
+
+    .logo-drop strong {
+      display: block;
+      color: var(--main-ink);
+      font-size: 13px;
+      font-weight: 610;
+    }
+
+    .logo-drop span {
+      display: block;
+      margin-top: 3px;
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .logo-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .logo-file-input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    @media (max-width: 1040px) {
+      .appearance-grid {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
@@ -4677,6 +4820,7 @@
       { id: "overview", label: "Dashboard", meta: "Live", initial: "DB" },
       { id: "tickets", label: "Log Upload", meta: "CSV", initial: "UP" },
       { id: "settings", label: "Rate Settings", meta: "$/hr", initial: "RT" },
+      { id: "appearance", label: "Appearance", meta: "Brand", initial: "AP" },
       { id: "departments", label: "Department Invoices", meta: "GL", initial: "IN" },
       { id: "exports", label: "Reports", meta: "PDF", initial: "RP" }
     ];
@@ -4740,6 +4884,18 @@
         eWasteAssetFee: 35,
         sharedOverhead: 12800,
         slaBreachCreditPct: 12
+      },
+      organization: {
+        name: "Northstar Health System",
+        division: "Information Technology",
+        reportTitle: "IT Chargeback & Showback Executive Summary",
+        address: "1000 Careway Drive, Austin, TX",
+        contactName: "IT Finance Office",
+        contactEmail: "it-finance@example.org",
+        phone: "(555) 010-2040",
+        website: "northstar.example.org",
+        logoDataUrl: "",
+        logoName: ""
       }
     };
 
@@ -5330,6 +5486,9 @@
         const meta = settingsSearchModel(tokens);
         return `${number(meta.visibleCount, 0)} settings ${meta.visibleCount === 1 ? "area" : "areas"}`;
       }
+      if (state.activeView === "appearance") {
+        return "Brand profile";
+      }
       if (state.activeView === "exports") {
         const rows = filteredSummariesForSearch(tokens);
         return `${number(rows.length, 0)} ${rows.length === 1 ? "department preview" : "department previews"}`;
@@ -5345,6 +5504,7 @@
         tickets: "Search tickets, assets, projects...",
         departments: "Search departments or ledger detail...",
         settings: "Search rates, fees, departments...",
+        appearance: "Search brand settings...",
         exports: "Search export previews..."
       }[state.activeView] || "Search data...";
     }
@@ -5364,6 +5524,7 @@
               ${state.activeView === "departments" ? renderDepartments() : ""}
               ${state.activeView === "tickets" ? renderTickets() : ""}
               ${state.activeView === "settings" ? renderSettings() : ""}
+              ${state.activeView === "appearance" ? renderAppearance(summary) : ""}
               ${state.activeView === "exports" ? renderExports(summary) : ""}
             </main>
             <footer class="app-footer">Built by <a href="https://github.com/ahmadsk-cell/" target="_blank" rel="noopener">ASK Andalus</a></footer>
@@ -5374,8 +5535,8 @@
     }
 
     function renderSidebar(summary) {
-      const mainItems = navItems.filter((item) => item.id !== "settings");
-      const settingsItem = navItems.find((item) => item.id === "settings");
+      const mainItems = navItems.filter((item) => !["settings", "appearance"].includes(item.id));
+      const managementItems = navItems.filter((item) => ["settings", "appearance"].includes(item.id));
       const sidebarPlaceholder = activeSearch() ? "Filtering data" : "Search data";
       return `
         <aside class="sidebar" aria-label="Qist navigation">
@@ -5395,7 +5556,7 @@
           <div class="sidebar-block">
             <p class="sidebar-section-label">Management</p>
             <nav class="sidebar-nav" aria-label="Management views">
-              ${settingsItem ? renderNavButton(settingsItem) : ""}
+              ${managementItems.map((item) => renderNavButton(item)).join("")}
             </nav>
           </div>
           <div class="sidebar-spacer" aria-hidden="true"></div>
@@ -5434,7 +5595,8 @@
         tickets: `<svg ${attrs}><path d="M5 4h10l4 4v12H5z"></path><path d="M15 4v5h5"></path><path d="M8 13h8M8 17h5"></path></svg>`,
         departments: `<svg ${attrs}><path d="M4 20V7l8-4 8 4v13"></path><path d="M9 20v-6h6v6"></path><path d="M8 9h.01M12 9h.01M16 9h.01"></path></svg>`,
         exports: `<svg ${attrs}><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg>`,
-        settings: `<svg ${attrs}><path d="M4 7h10"></path><path d="M18 7h2"></path><circle cx="16" cy="7" r="2"></circle><path d="M4 17h2"></path><path d="M10 17h10"></path><circle cx="8" cy="17" r="2"></circle></svg>`
+        settings: `<svg ${attrs}><path d="M4 7h10"></path><path d="M18 7h2"></path><circle cx="16" cy="7" r="2"></circle><path d="M4 17h2"></path><path d="M10 17h10"></path><circle cx="8" cy="17" r="2"></circle></svg>`,
+        appearance: `<svg ${attrs}><path d="M12 3 4.5 6.5v5c0 4.5 3 7.7 7.5 9.5 4.5-1.8 7.5-5 7.5-9.5v-5L12 3Z"></path><path d="M9 12h6"></path><path d="M12 9v6"></path></svg>`
       };
       return icons[id] || `<svg ${attrs}><circle cx="12" cy="12" r="8"></circle></svg>`;
     }
@@ -6377,6 +6539,101 @@
       `;
     }
 
+    function renderAppearance(summary) {
+      const org = state.config.organization;
+      const logoMarkup = org.logoDataUrl
+        ? `<img src="${html(org.logoDataUrl)}" alt="${html(org.name)} logo">`
+        : `<span>Org logo</span>`;
+      return `
+        <section class="grid">
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <h2 class="panel-title">Appearance</h2>
+                <p class="panel-subtitle">Set the organization identity used in Qist executive PDF reports.</p>
+              </div>
+              <div class="inline-actions">
+                <button class="btn" type="button" data-action="export-pdf">Preview PDF Report</button>
+                <button class="btn ghost" type="button" data-action="reset-appearance">Reset Appearance</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="appearance-grid">
+            <div class="panel">
+              <div class="panel-header">
+                <div>
+                  <h2 class="panel-title">Organization Details</h2>
+                  <p class="panel-subtitle">These fields print alongside the Qist logo in the report header.</p>
+                </div>
+              </div>
+              <div class="form-row">
+                ${organizationInput("name", "Organization Name", "Northstar Health System")}
+                ${organizationInput("division", "Division / Business Unit", "Information Technology")}
+                ${organizationInput("reportTitle", "Report Title", "IT Chargeback & Showback Executive Summary")}
+                ${organizationInput("address", "Address", "1000 Careway Drive, Austin, TX")}
+                ${organizationInput("contactName", "Prepared By", "IT Finance Office")}
+                ${organizationInput("contactEmail", "Contact Email", "it-finance@example.org", "email")}
+                ${organizationInput("phone", "Phone", "(555) 010-2040", "tel")}
+                ${organizationInput("website", "Website", "northstar.example.org")}
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-header">
+                <div>
+                  <h2 class="panel-title">Organization Logo</h2>
+                  <p class="panel-subtitle">PNG, JPG, WebP, or SVG. Large images are resized before local storage.</p>
+                </div>
+              </div>
+              <div class="logo-uploader">
+                <div class="logo-drop">
+                  <div>
+                    <strong>${org.logoName ? html(org.logoName) : "No organization logo loaded"}</strong>
+                    <span>The logo will print opposite the Qist mark in executive exports.</span>
+                  </div>
+                </div>
+                <input id="orgLogoInput" class="logo-file-input" type="file" accept="image/*,.svg" data-org-logo>
+                <div class="logo-actions">
+                  <label class="btn primary" for="orgLogoInput">Upload Logo</label>
+                  ${org.logoDataUrl ? `<button class="btn ghost" type="button" data-action="remove-org-logo">Remove Logo</button>` : ""}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="brand-card" aria-label="PDF report branding preview">
+            <div class="brand-card-head">
+              <div class="qist-report-mark" role="img" aria-label="Qist"></div>
+              <div class="org-logo-frame">${logoMarkup}</div>
+            </div>
+            <div class="brand-card-title">
+              <h3>${html(org.reportTitle || "IT Chargeback & Showback Executive Summary")}</h3>
+              <p>${html(org.name || "Organization Name")} ${org.division ? `| ${html(org.division)}` : ""}</p>
+            </div>
+            <div class="brand-card-meta">
+              <span>${html(org.contactName || "Prepared by IT Finance")}</span>
+              <span>${html(org.contactEmail || "No email configured")}</span>
+              <span>${html(org.address || "No address configured")}</span>
+              <span>${html(org.website || org.phone || "No website configured")}</span>
+              <span>${state.mode === "showback" ? "Showback mode" : "Chargeback mode"}</span>
+              <span>${summary.tickets} tickets | ${moneyPrecise(summary.total)}</span>
+            </div>
+          </div>
+        </section>
+      `;
+    }
+
+    function organizationInput(path, label, placeholder, type = "text") {
+      const value = state.config.organization[path] || "";
+      return `
+        <div class="field">
+          <label>${label}</label>
+          <input class="input" type="${type}" value="${html(value)}" placeholder="${html(placeholder)}" data-org-path="${path}">
+        </div>
+      `;
+    }
+
     function departmentCell(index, field, value, type, numeric) {
       return `
         <td class="${numeric ? "numeric" : ""}">
@@ -6437,7 +6694,7 @@
                 <p class="panel-subtitle">Download executive and invoice-ready outputs from the current model.</p>
               </div>
               <div class="inline-actions">
-                <button class="btn primary" type="button" data-action="export-pdf">Download Executive PDF</button>
+                <button class="btn primary" type="button" data-action="export-pdf">Open Executive PDF</button>
                 <button class="btn" type="button" data-action="export-dept-csv">Department CSV</button>
                 <button class="btn" type="button" data-action="export-ticket-csv">Ticket CSV</button>
               </div>
@@ -6491,7 +6748,7 @@
                 </tbody>
               </table>
             </div>` : `<div class="empty-state">No department export rows match the current search.</div>`}
-            <p class="footer-note">The PDF is generated entirely in the browser as a simple executive summary file. CSV exports include normalized calculated fields for downstream invoicing or ledger workflows.</p>
+            <p class="footer-note">The executive PDF opens as a branded print-ready report using the Qist mark and the organization identity configured in Appearance. CSV exports include normalized calculated fields for downstream invoicing or ledger workflows.</p>
           </div>
         </section>
       `;
@@ -6605,6 +6862,19 @@
           render();
         }
       }
+      if (action === "reset-appearance") {
+        state.config.organization = clone(defaultConfig.organization);
+        saveConfig();
+        render();
+        return;
+      }
+      if (action === "remove-org-logo") {
+        state.config.organization.logoDataUrl = "";
+        state.config.organization.logoName = "";
+        saveConfig();
+        render();
+        return;
+      }
       if (action === "recalculate") {
         state.uploadStatus = "Model recalculated with current settings";
         render();
@@ -6672,6 +6942,12 @@
         item[field] = field === "multiplier" ? parseNumber(target.value) : target.value.trim();
         saveConfig();
         render();
+        return;
+      }
+
+      if (target.matches("[data-org-logo]")) {
+        const file = target.files?.[0];
+        if (file) readOrgLogo(file);
       }
     });
 
@@ -6697,6 +6973,12 @@
           search.focus();
           search.setSelectionRange(search.value.length, search.value.length);
         }
+        return;
+      }
+
+      if (target.matches("[data-org-path]")) {
+        state.config.organization[target.dataset.orgPath] = target.value;
+        saveConfig();
       }
     });
 
@@ -6720,6 +7002,60 @@
         }
       };
       reader.readAsText(file);
+    }
+
+    function readOrgLogo(file) {
+      const isSvg = file.type.includes("svg") || /\.svg$/i.test(file.name);
+      if (!file.type.startsWith("image/") && !isSvg) {
+        state.uploadStatus = "Logo upload failed: choose an image file.";
+        render();
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = String(reader.result || "");
+        if (isSvg) {
+          storeOrgLogo(dataUrl, file.name);
+          return;
+        }
+        resizeRasterLogo(dataUrl, file.name);
+      };
+      reader.onerror = () => {
+        state.uploadStatus = "Logo upload failed: the file could not be read.";
+        render();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function resizeRasterLogo(dataUrl, fileName) {
+      const image = new Image();
+      image.onload = () => {
+        const maxWidth = 420;
+        const maxHeight = 180;
+        const scale = Math.min(1, maxWidth / image.width, maxHeight / image.height);
+        const width = Math.max(1, Math.round(image.width * scale));
+        const height = Math.max(1, Math.round(image.height * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, width, height);
+        ctx.drawImage(image, 0, 0, width, height);
+        storeOrgLogo(canvas.toDataURL("image/png"), fileName);
+      };
+      image.onerror = () => {
+        state.uploadStatus = "Logo upload failed: the image could not be decoded.";
+        render();
+      };
+      image.src = dataUrl;
+    }
+
+    function storeOrgLogo(dataUrl, fileName) {
+      state.config.organization.logoDataUrl = dataUrl;
+      state.config.organization.logoName = fileName;
+      saveConfig();
+      state.uploadStatus = `Organization logo loaded: ${fileName}`;
+      render();
     }
 
     function parseJson(text) {
@@ -6855,32 +7191,343 @@
 
     function exportPdf() {
       const summary = totals();
-      const lines = [
-        "IT Chargeback & Showback Executive Summary",
-        `Generated: ${new Date().toLocaleString("en-US")}`,
-        `Mode: ${state.mode === "showback" ? "Showback - informational cost awareness" : "Chargeback - department ledger transfer"}`,
-        "",
-        `Total model value: ${moneyPrecise(summary.total)}`,
-        `Ticket-level support value: ${moneyPrecise(summary.ticketTotal)}`,
-        `Total billed hours: ${number(summary.hours, 1)}`,
-        `Tickets processed: ${summary.tickets}`,
-        `SLA breach credits: ${moneyPrecise(summary.slaImpact)}`,
-        `Top consuming department: ${summary.topDepartment}`,
-        "",
-        "Department Rollup",
-        "-----------------"
+      const reportWindow = window.open("", "_blank", "width=1100,height=900");
+      if (!reportWindow) {
+        state.uploadStatus = "PDF export blocked by the browser. Allow pop-ups for this local app and try again.";
+        render();
+        return;
+      }
+      reportWindow.document.open();
+      reportWindow.document.write(buildExecutiveReportHtml(summary));
+      reportWindow.document.close();
+      reportWindow.focus();
+      setTimeout(() => reportWindow.print(), 450);
+    }
+
+    function buildExecutiveReportHtml(summary) {
+      const org = state.config.organization;
+      const generatedAt = new Date().toLocaleString("en-US");
+      const modeLabel = state.mode === "showback" ? "Showback" : "Chargeback";
+      const breachRate = summary.tickets ? summary.breaches / summary.tickets * 100 : 0;
+      const qistLogoUrl = new URL("assets/qistlogo-mask.svg", window.location.href).href;
+      const orgLogo = org.logoDataUrl
+        ? `<img src="${html(org.logoDataUrl)}" alt="${html(org.name)} logo">`
+        : `<span>${html((org.name || "Org").slice(0, 2).toUpperCase())}</span>`;
+      const topDepartments = state.summaries.slice(0, 5);
+      const topTickets = [...state.tickets].sort((a, b) => b.ticketTotal - a.ticketTotal).slice(0, 5);
+      const metricCards = [
+        ["Total Model Value", moneyPrecise(summary.total), `${summary.tickets} tickets processed`],
+        ["Support Value", moneyPrecise(summary.ticketTotal), `${number(summary.hours, 1)} billable hours`],
+        ["SLA Breach Credits", moneyPrecise(summary.slaImpact), `${summary.breaches} breaches | ${percent(breachRate)}`],
+        ["Top Department", summary.topDepartment, modeLabel + " mode"]
       ];
-      state.summaries.forEach((item) => {
-        lines.push(`${item.department} (${item.costCenter}) - Total ${moneyPrecise(item.total)} | Tickets ${item.ticketCount} | Hours ${number(item.billedHours, 1)} | Breaches ${item.breaches}`);
-        lines.push(`  Assets ${moneyPrecise(item.assetCost)} | Support ${moneyPrecise(item.supportCost)} | Sensitivity ${moneyPrecise(item.sensitivitySurcharge)} | SLA ${moneyPrecise(item.slaImpact)} | Overhead ${moneyPrecise(item.overhead)}`);
-      });
-      lines.push("");
-      lines.push("Calculation Notes");
-      lines.push("-----------------");
-      lines.push("Total departmental spend = asset base rate + ticket support cost + shared overhead + sensitivity surcharges + SLA credits.");
-      lines.push("Ticket support cost uses either tier flat fees or billed hours x skill rate x priority multiplier. After-hours tickets add a mobilization surcharge and minimum billable hours when hourly mode is active.");
-      const pdf = buildPdf(lines);
-      downloadText(`${state.mode}-executive-summary.pdf`, pdf, "application/pdf");
+      return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${html(org.reportTitle || "Qist Executive Summary")}</title>
+  <style>
+    @page { size: Letter; margin: 0.45in; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #f3f4f6;
+      color: #17191d;
+      font-family: Inter, "SF Pro Text", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 12px;
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+    }
+    .sheet {
+      width: min(100%, 980px);
+      margin: 24px auto;
+      padding: 34px;
+      background: #ffffff;
+      border: 1px solid #d9dde2;
+      border-radius: 10px;
+      box-shadow: 0 24px 70px rgba(15, 23, 42, 0.14);
+    }
+    .report-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(220px, 320px);
+      gap: 28px;
+      align-items: start;
+      padding-bottom: 22px;
+      border-bottom: 1px solid #dfe3e8;
+    }
+    .qist-row { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+    .qist-logo {
+      width: 86px;
+      height: 30px;
+      background: linear-gradient(90deg, #17191d 0%, #17191d 64%, #159f82 100%);
+      -webkit-mask: url("${html(qistLogoUrl)}") left center / contain no-repeat;
+      mask: url("${html(qistLogoUrl)}") left center / contain no-repeat;
+    }
+    .qist-meta { color: #6b7280; font-size: 11px; font-weight: 520; }
+    h1 {
+      margin: 0;
+      max-width: 650px;
+      color: #111315;
+      font-size: 30px;
+      line-height: 1.05;
+      letter-spacing: 0;
+      font-weight: 690;
+    }
+    .subtitle {
+      margin: 9px 0 0;
+      max-width: 640px;
+      color: #5f6670;
+      font-size: 13px;
+    }
+    .org-block {
+      display: grid;
+      gap: 12px;
+      justify-items: end;
+      text-align: right;
+    }
+    .org-logo {
+      width: 118px;
+      height: 72px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      border: 1px solid #d9dde2;
+      border-radius: 8px;
+      background: #f6f7f8;
+      color: #17191d;
+      font-size: 20px;
+      font-weight: 680;
+    }
+    .org-logo img { width: 100%; height: 100%; object-fit: contain; padding: 9px; }
+    .org-name { color: #17191d; font-size: 15px; font-weight: 650; }
+    .org-details { color: #68717c; font-size: 11px; }
+    .meta-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin: 22px 0;
+    }
+    .metric {
+      min-height: 88px;
+      padding: 13px 14px;
+      border: 1px solid #dfe3e8;
+      border-radius: 8px;
+      background: #fbfcfd;
+    }
+    .metric label {
+      display: block;
+      color: #747b84;
+      font-size: 10px;
+      font-weight: 650;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .metric strong {
+      display: block;
+      margin-top: 8px;
+      color: #111315;
+      font-size: 21px;
+      line-height: 1.05;
+      font-weight: 690;
+      font-variant-numeric: tabular-nums;
+    }
+    .metric span {
+      display: block;
+      margin-top: 6px;
+      color: #68717c;
+      font-size: 11px;
+    }
+    .section {
+      margin-top: 22px;
+      break-inside: avoid;
+    }
+    .section-title {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .section-title h2 {
+      margin: 0;
+      color: #17191d;
+      font-size: 15px;
+      font-weight: 660;
+    }
+    .section-title span {
+      color: #747b84;
+      font-size: 11px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid #dfe3e8;
+      border-radius: 8px;
+      overflow: hidden;
+      font-size: 11px;
+    }
+    th {
+      padding: 9px 10px;
+      background: #f4f6f8;
+      color: #68717c;
+      text-align: left;
+      font-size: 10px;
+      font-weight: 680;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+    }
+    td {
+      padding: 9px 10px;
+      border-top: 1px solid #e6e9ee;
+      color: #252a30;
+      vertical-align: top;
+    }
+    .numeric { text-align: right; font-variant-numeric: tabular-nums; }
+    .amount { color: #111315; font-weight: 650; }
+    .credit { color: #147c6c; }
+    .risk { color: #c2414b; }
+    .notes {
+      display: grid;
+      gap: 8px;
+      padding: 13px 14px;
+      border: 1px solid #dfe3e8;
+      border-radius: 8px;
+      background: #fbfcfd;
+      color: #5f6670;
+      font-size: 11px;
+    }
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 26px;
+      padding-top: 14px;
+      border-top: 1px solid #dfe3e8;
+      color: #8a929c;
+      font-size: 10px;
+    }
+    @media print {
+      body { background: #ffffff; }
+      .sheet { width: 100%; margin: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none; }
+      .section, .metric, tr { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <main class="sheet">
+    <header class="report-header">
+      <div>
+        <div class="qist-row">
+          <div class="qist-logo" aria-label="Qist"></div>
+          <div class="qist-meta">IT chargeback and showback model</div>
+        </div>
+        <h1>${html(org.reportTitle || "IT Chargeback & Showback Executive Summary")}</h1>
+        <p class="subtitle">${html(org.division || "Information Technology")} | ${modeLabel} report generated ${html(generatedAt)}</p>
+      </div>
+      <aside class="org-block">
+        <div class="org-logo">${orgLogo}</div>
+        <div>
+          <div class="org-name">${html(org.name || "Organization")}</div>
+          <div class="org-details">
+            ${[org.address, org.contactName, org.contactEmail, org.phone, org.website].filter(Boolean).map((item) => html(item)).join("<br>")}
+          </div>
+        </div>
+      </aside>
+    </header>
+
+    <section class="meta-strip">
+      ${metricCards.map(([label, value, note]) => `
+        <article class="metric">
+          <label>${html(label)}</label>
+          <strong>${html(value)}</strong>
+          <span>${html(note)}</span>
+        </article>
+      `).join("")}
+    </section>
+
+    <section class="section">
+      <div class="section-title">
+        <h2>Department Rollup</h2>
+        <span>${state.summaries.length} cost centers</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Department</th>
+            <th>Cost Center</th>
+            <th class="numeric">Tickets</th>
+            <th class="numeric">Hours</th>
+            <th class="numeric">Support</th>
+            <th class="numeric">SLA</th>
+            <th class="numeric">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${topDepartments.map((item) => `
+            <tr>
+              <td><strong>${html(item.department)}</strong></td>
+              <td>${html(item.costCenter)}</td>
+              <td class="numeric">${item.ticketCount}</td>
+              <td class="numeric">${number(item.billedHours, 1)}</td>
+              <td class="numeric">${moneyPrecise(item.supportCost)}</td>
+              <td class="numeric ${item.slaImpact < 0 ? "credit" : ""}">${moneyPrecise(item.slaImpact)}</td>
+              <td class="numeric amount">${moneyPrecise(item.total)}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <div class="section-title">
+        <h2>Highest Cost Tickets</h2>
+        <span>Row-level support impact</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Ticket</th>
+            <th>Department</th>
+            <th>Priority</th>
+            <th>Tier</th>
+            <th>SLA</th>
+            <th class="numeric">Billable</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${topTickets.map((ticket) => `
+            <tr>
+              <td><strong>${html(ticket.id)}</strong><br>${html(ticket.createdDate)}</td>
+              <td>${html(ticket.department)}</td>
+              <td>${html(ticket.priority)} ${number(ticket.multiplier, 1)}x</td>
+              <td>${html(ticket.tierName)}</td>
+              <td class="${ticket.breached ? "risk" : "credit"}">${html(ticket.breached ? "Breached" : "Met SLA")}</td>
+              <td class="numeric amount">${moneyPrecise(ticket.ticketTotal)}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <div class="section-title">
+        <h2>Calculation Notes</h2>
+        <span>Qist model assumptions</span>
+      </div>
+      <div class="notes">
+        <div>Total departmental spend = asset base rate + ticket support cost + shared overhead + sensitivity surcharges + SLA credits.</div>
+        <div>Ticket support cost uses either tier flat fees or billed hours x skill rate x priority multiplier. After-hours tickets add a mobilization surcharge and minimum billable hours when hourly mode is active.</div>
+        <div>${modeLabel} output is ${state.mode === "showback" ? "informational for cost awareness and planning." : "formatted for departmental ledger transfer workflows."}</div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <span>Generated by Qist</span>
+      <span>${html(org.name || "Organization")} | ${html(generatedAt)}</span>
+    </footer>
+  </main>
+</body>
+</html>`;
     }
 
     function toCsv(rows) {

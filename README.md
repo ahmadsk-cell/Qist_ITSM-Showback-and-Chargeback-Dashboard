@@ -15,7 +15,8 @@ Open `index.html` in a browser. No build step or package install is required.
 - Executive overview with KPIs, spend charts, monthly trend, SLA analysis, and resolver utilization.
 - Department ledger view for department heads.
 - Ticket inspector with department, priority, sensitivity, and search filters.
-- Export center for executive PDF, department ledger CSV, and ticket calculation CSV.
+- Appearance settings for organization details and logo branding.
+- Export center for branded, print-ready executive PDF reports, department ledger CSV, and ticket calculation CSV.
 
 ## Sample Data
 
