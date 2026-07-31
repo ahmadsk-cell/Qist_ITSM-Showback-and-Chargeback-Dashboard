@@ -4899,6 +4899,128 @@
       font-weight: 650;
     }
 
+    /* Quiet KPI treatment for department and report summaries. */
+    .kpi-grid {
+      gap: 9px;
+    }
+
+    .metric-card,
+    .metric-card.green,
+    .metric-card.amber,
+    .metric-card.rose {
+      --metric-accent: #8d96a0;
+      min-height: 118px;
+      padding: 15px 16px;
+      align-content: start;
+      gap: 9px;
+      border: 1px solid var(--hairline-strong);
+      border-radius: 8px;
+      background: var(--card-bg);
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+      overflow: hidden;
+      transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+    }
+
+    .metric-card.green {
+      --metric-accent: var(--green);
+    }
+
+    .metric-card.amber {
+      --metric-accent: #c79a35;
+    }
+
+    .metric-card.rose {
+      --metric-accent: #d66576;
+    }
+
+    .metric-card:hover,
+    .metric-card.green:hover,
+    .metric-card.amber:hover,
+    .metric-card.rose:hover {
+      transform: none;
+      border-color: color-mix(in srgb, var(--main-muted) 34%, var(--hairline-strong));
+      box-shadow: 0 6px 16px rgba(15, 23, 42, 0.07);
+    }
+
+    [data-theme="dark"] .metric-card,
+    [data-theme="dark"] .metric-card.green,
+    [data-theme="dark"] .metric-card.amber,
+    [data-theme="dark"] .metric-card.rose {
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+    }
+
+    .metric-head {
+      min-height: 18px;
+    }
+
+    .metric-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--main-muted);
+      font-size: 11px;
+      font-weight: 560;
+      line-height: 1.25;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    .metric-signal {
+      width: 6px;
+      height: 6px;
+      flex: 0 0 auto;
+      border-radius: 999px;
+      background: var(--metric-accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--metric-accent) 10%, transparent);
+    }
+
+    .metric-value {
+      color: var(--main-ink);
+      font-family: var(--font-sans);
+      font-size: 25px;
+      line-height: 1.08;
+      font-weight: 590;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0;
+    }
+
+    .metric-note {
+      min-height: 0;
+      color: var(--main-muted);
+      font-size: 11px;
+      line-height: 1.45;
+      font-weight: 410;
+    }
+
+    .metric-trend,
+    .metric-trend.down {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      color: var(--green);
+      font-family: var(--font-sans);
+      font-size: 11px;
+      font-weight: 520;
+    }
+
+    .metric-trend.down {
+      color: var(--rose);
+    }
+
+    .sparkline,
+    .metric-card.green .sparkline,
+    .metric-card.amber .sparkline,
+    .metric-card.rose .sparkline {
+      height: 18px;
+      margin-top: 1px;
+      color: var(--metric-accent);
+      opacity: 0.72;
+    }
+
     /* Executive composition: one aligned lead row, followed by the analytical body. */
     .mirai-dashboard {
       display: grid;
@@ -6856,22 +6978,23 @@
         </div>
       `;
     }
-    function renderKpi(label, value, note, tone, trend = "+0.0%", sparkValues = [], trendDown = false) {
+    function renderKpi(label, value, note, tone, trend = "", sparkValues = [], trendDown = false) {
       return `
         <article class="metric-card ${tone || ""}">
           <div class="metric-head">
-            <div class="metric-label">${label}</div>
-            <span class="metric-trend ${trendDown ? "down" : ""}">${trend}</span>
+            <div class="metric-label"><span class="metric-signal" aria-hidden="true"></span>${label}</div>
+            ${trend ? `<span class="metric-trend ${trendDown ? "down" : ""}">${trend}</span>` : ""}
           </div>
           <div class="metric-value">${value}</div>
           <div class="metric-note">${note}</div>
-          ${renderSparkline(sparkValues)}
+          ${sparkValues.length ? renderSparkline(sparkValues) : ""}
         </article>
       `;
     }
 
     function renderSparkline(values) {
-      const safeValues = values.length ? values.map((value) => parseNumber(value)) : [2, 4, 3, 6, 5, 8];
+      if (!values.length) return "";
+      const safeValues = values.map((value) => parseNumber(value));
       const min = Math.min(...safeValues);
       const max = Math.max(...safeValues);
       const spread = Math.max(1, max - min);
