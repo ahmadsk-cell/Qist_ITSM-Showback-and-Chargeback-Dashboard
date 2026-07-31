@@ -4794,6 +4794,82 @@
       pointer-events: none;
     }
 
+    .import-history {
+      display: grid;
+      gap: 12px;
+      padding: 14px;
+      border: 1px solid color-mix(in srgb, var(--hairline-strong) 78%, transparent);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--surface-1) 84%, transparent);
+    }
+
+    .import-history-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .import-history-title {
+      margin: 0;
+      color: var(--main-ink);
+      font-size: 14px;
+      font-weight: 640;
+      letter-spacing: 0;
+    }
+
+    .import-history-status,
+    .import-history-meta {
+      color: var(--main-muted);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .import-history-status {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .import-history-table td {
+      vertical-align: middle;
+    }
+
+    .import-history-name {
+      display: grid;
+      gap: 2px;
+    }
+
+    .import-history-name strong {
+      color: var(--main-ink);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .import-history-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 7px;
+    }
+
+    .import-history-empty {
+      min-height: 74px;
+      display: grid;
+      place-items: center;
+      border: 1px dashed color-mix(in srgb, var(--hairline-strong) 78%, transparent);
+      border-radius: 8px;
+      color: var(--main-muted);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .saved-marker {
+      color: var(--green);
+      font-size: 11px;
+      font-weight: 650;
+    }
+
     @media (max-width: 1040px) {
       .appearance-grid {
         grid-template-columns: 1fr;
@@ -4807,6 +4883,9 @@
   <script>
     const storageKey = "it-chargeback-showback-config-v1";
     const themeKey = "it-chargeback-showback-theme-v2";
+    const importDbName = "qist-import-history-v1";
+    const importStoreName = "imports";
+    const activeImportKey = "qist-active-import-id-v1";
 
     const colors = ["#4b5563", "#159f82", "#b7791f", "#d84c4c", "#64748b", "#8a929c", "#343941", "#6b7280"];
     const darkColors = ["#8a929c", "#34d399", "#c9a24d", "#e06a6a", "#6f7780", "#a6acb4", "#3f464f", "#79818b"];
@@ -4931,6 +5010,10 @@
       mapping: defaultMapping(),
       uploadedFileName: "Built-in realistic mock ticket log",
       uploadStatus: "18 mock tickets loaded by default",
+      importHistory: [],
+      importHistoryReady: false,
+      importHistoryStatus: "Saved imports stay local to this browser.",
+      activeImportId: loadActiveImportId(),
       selectedDepartment: "ER",
       filters: { search: "", department: "All", priority: "All", sensitivity: "All" },
       tickets: [],
@@ -4991,6 +5074,243 @@
       } catch (error) {
         state.uploadStatus = "Theme changed for this session. Browser storage is unavailable.";
       }
+    }
+
+    function loadActiveImportId() {
+      try {
+        return window.localStorage.getItem(activeImportKey) || "";
+      } catch (error) {
+        return "";
+      }
+    }
+
+    function saveActiveImportId(id) {
+      try {
+        if (id) window.localStorage.setItem(activeImportKey, id);
+        else window.localStorage.removeItem(activeImportKey);
+      } catch (error) {
+        state.importHistoryStatus = "Import history loaded for this session. Browser storage is unavailable.";
+      }
+    }
+
+    let importDbPromise;
+
+    function openImportDb() {
+      if (!("indexedDB" in window)) {
+        return Promise.reject(new Error("IndexedDB is not available in this browser."));
+      }
+      if (importDbPromise) return importDbPromise;
+      importDbPromise = new Promise((resolve, reject) => {
+        const request = window.indexedDB.open(importDbName, 1);
+        request.onupgradeneeded = () => {
+          const db = request.result;
+          if (!db.objectStoreNames.contains(importStoreName)) {
+            const store = db.createObjectStore(importStoreName, { keyPath: "id" });
+            store.createIndex("savedAt", "savedAt", { unique: false });
+          }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error || new Error("Import history could not be opened."));
+      });
+      return importDbPromise;
+    }
+
+    async function importStoreRequest(mode, callback) {
+      const db = await openImportDb();
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(importStoreName, mode);
+        const store = transaction.objectStore(importStoreName);
+        let request;
+        try {
+          request = callback(store);
+        } catch (error) {
+          reject(error);
+          return;
+        }
+        if (request) {
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error || new Error("Import history request failed."));
+        } else {
+          transaction.oncomplete = () => resolve();
+        }
+        transaction.onerror = () => reject(transaction.error || new Error("Import history transaction failed."));
+      });
+    }
+
+    async function getAllImportRecords() {
+      return importStoreRequest("readonly", (store) => store.getAll());
+    }
+
+    async function getImportRecord(id) {
+      return importStoreRequest("readonly", (store) => store.get(id));
+    }
+
+    async function putImportRecord(record) {
+      return importStoreRequest("readwrite", (store) => store.put(record));
+    }
+
+    async function removeImportRecord(id) {
+      return importStoreRequest("readwrite", (store) => store.delete(id));
+    }
+
+    function summarizeImportRecord(record) {
+      return {
+        id: record.id,
+        name: record.name,
+        sourceFileName: record.sourceFileName,
+        savedAt: record.savedAt,
+        rowCount: parseNumber(record.rowCount, Array.isArray(record.rows) ? record.rows.length : 0),
+        headers: Array.isArray(record.headers) ? record.headers : []
+      };
+    }
+
+    async function refreshImportHistory(renderAfter = false) {
+      if (!("indexedDB" in window)) {
+        state.importHistory = [];
+        state.importHistoryReady = false;
+        state.importHistoryStatus = "Import History needs a browser with IndexedDB support.";
+        if (renderAfter) render();
+        return;
+      }
+      try {
+        const records = await getAllImportRecords();
+        state.importHistory = records
+          .map(summarizeImportRecord)
+          .sort((a, b) => String(b.savedAt).localeCompare(String(a.savedAt)));
+        state.importHistoryReady = true;
+        if (!state.importHistoryStatus) {
+          state.importHistoryStatus = state.importHistory.length
+            ? `${state.importHistory.length} saved ${state.importHistory.length === 1 ? "import" : "imports"} on this device.`
+            : "No saved imports yet.";
+        }
+      } catch (error) {
+        state.importHistory = [];
+        state.importHistoryReady = false;
+        state.importHistoryStatus = `Import History unavailable: ${error.message}`;
+      }
+      if (renderAfter) render();
+    }
+
+    function createImportId() {
+      return "import-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
+    }
+
+    function createImportName() {
+      const source = String(state.uploadedFileName || "Ticket import").replace(/\.(csv|json)$/i, "").trim() || "Ticket import";
+      const date = new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+      return source.includes("Built-in") ? `Starter model - ${date}` : `${source} - ${date}`;
+    }
+
+    function formatImportDate(value) {
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "Unknown";
+      return date.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+    }
+
+    function currentImportSummary() {
+      if (state.activeImportId) {
+        const saved = state.importHistory.find((item) => item.id === state.activeImportId);
+        if (saved) return `Saved import: ${saved.name}`;
+      }
+      if (/built-in/i.test(state.uploadedFileName)) return "Starter data";
+      return "Unsaved upload";
+    }
+
+    function clearActiveImport() {
+      state.activeImportId = "";
+      saveActiveImportId("");
+    }
+
+    function applyImportRecord(record, status) {
+      if (!record || !Array.isArray(record.rows)) throw new Error("Saved import is missing ticket rows.");
+      state.rawRows = clone(record.rows);
+      state.headers = Array.isArray(record.headers) && record.headers.length ? record.headers : headersFromRows(record.rows);
+      state.mapping = record.mapping && typeof record.mapping === "object" ? record.mapping : inferMapping(state.headers);
+      state.uploadedFileName = record.sourceFileName || record.name || "Saved import";
+      state.uploadStatus = status || `${record.rowCount || record.rows.length} rows restored from Import History.`;
+      state.activeImportId = record.id;
+      state.filters = { search: "", department: "All", priority: "All", sensitivity: "All" };
+      saveActiveImportId(record.id);
+    }
+
+    async function saveCurrentImport() {
+      if (!state.rawRows.length) {
+        state.importHistoryStatus = "There are no rows to save yet.";
+        render();
+        return;
+      }
+      try {
+        const existing = state.importHistory.find((item) => item.id === state.activeImportId);
+        const record = {
+          id: state.activeImportId || createImportId(),
+          name: existing?.name || createImportName(),
+          sourceFileName: state.uploadedFileName,
+          savedAt: new Date().toISOString(),
+          rowCount: state.rawRows.length,
+          headers: clone(state.headers),
+          mapping: clone(state.mapping),
+          rows: clone(state.rawRows)
+        };
+        await putImportRecord(record);
+        state.activeImportId = record.id;
+        saveActiveImportId(record.id);
+        await refreshImportHistory(false);
+        state.importHistoryStatus = `${record.rowCount} rows saved locally as ${record.name}.`;
+        state.uploadStatus = `${record.rowCount} rows saved to Import History.`;
+      } catch (error) {
+        state.importHistoryStatus = `Save failed: ${error.message}`;
+      }
+      render();
+    }
+
+    async function loadSavedImport(id) {
+      try {
+        const record = await getImportRecord(id);
+        if (!record) throw new Error("Saved import was not found.");
+        applyImportRecord(record);
+        await refreshImportHistory(false);
+        state.importHistoryStatus = `${record.rowCount || record.rows.length} rows loaded from ${record.name}.`;
+      } catch (error) {
+        state.importHistoryStatus = `Load failed: ${error.message}`;
+      }
+      render();
+    }
+
+    async function deleteSavedImport(id) {
+      const existing = state.importHistory.find((item) => item.id === id);
+      try {
+        await removeImportRecord(id);
+        if (state.activeImportId === id) {
+          clearActiveImport();
+          state.uploadStatus = "Saved import deleted. Current dashboard data remains in this session.";
+        }
+        await refreshImportHistory(false);
+        state.importHistoryStatus = `${existing?.name || "Saved import"} deleted from this browser.`;
+      } catch (error) {
+        state.importHistoryStatus = `Delete failed: ${error.message}`;
+      }
+      render();
+    }
+
+    async function initializeImportHistory() {
+      await refreshImportHistory(false);
+      const activeId = state.activeImportId;
+      if (activeId) {
+        try {
+          const record = await getImportRecord(activeId);
+          if (record) {
+            applyImportRecord(record, `${record.rowCount || record.rows.length} rows restored from saved Import History.`);
+            state.importHistoryStatus = `Restored ${record.name} from this browser.`;
+            render();
+            return;
+          }
+          clearActiveImport();
+          state.importHistoryStatus = "Previously active import was not found. Starter model loaded.";
+        } catch (error) {
+          state.importHistoryStatus = `Saved import restore failed: ${error.message}`;
+        }
+      }
+      render();
     }
 
     function defaultMapping() {
@@ -5932,6 +6252,65 @@
       `;
     }
 
+    function renderImportHistoryPanel() {
+      const saveLabel = state.activeImportId ? "Update Saved Import" : "Save Current Import";
+      const rowsLabel = `${state.rawRows.length} current ${state.rawRows.length === 1 ? "row" : "rows"}`;
+      return `
+        <div class="import-history" aria-label="Import History">
+          <div class="import-history-head">
+            <div>
+              <h3 class="import-history-title">Import History</h3>
+              <div class="import-history-meta">${html(currentImportSummary())} | ${rowsLabel} | local browser storage</div>
+            </div>
+            <div class="inline-actions">
+              <button class="btn primary" type="button" data-action="save-current-import" ${state.rawRows.length ? "" : "disabled"}>${saveLabel}</button>
+              <button class="btn ghost" type="button" data-action="refresh-import-history">Refresh</button>
+            </div>
+          </div>
+          <div class="import-history-status">
+            <span class="search-dot"></span>
+            <span>${html(state.importHistoryStatus || "Saved imports stay local to this browser.")}</span>
+          </div>
+          ${state.importHistory.length ? `
+            <div class="table-wrap">
+              <table class="import-history-table">
+                <thead>
+                  <tr>
+                    <th>Saved Import</th>
+                    <th>Saved</th>
+                    <th class="numeric">Rows</th>
+                    <th>Source</th>
+                    <th class="numeric">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${state.importHistory.map((item) => `
+                    <tr>
+                      <td>
+                        <span class="import-history-name">
+                          <strong>${html(item.name)}</strong>
+                          ${state.activeImportId === item.id ? `<span class="saved-marker">Current dataset</span>` : `<span class="import-history-meta">${html(item.headers.length)} mapped columns</span>`}
+                        </span>
+                      </td>
+                      <td>${html(formatImportDate(item.savedAt))}</td>
+                      <td class="numeric">${number(item.rowCount, 0)}</td>
+                      <td>${html(item.sourceFileName || "Uploaded file")}</td>
+                      <td class="numeric">
+                        <span class="import-history-actions">
+                          <button class="btn ghost" type="button" data-action="load-saved-import" data-import-id="${html(item.id)}">Load</button>
+                          <button class="btn danger" type="button" data-action="delete-saved-import" data-import-id="${html(item.id)}">Delete</button>
+                        </span>
+                      </td>
+                    </tr>
+                  `).join("")}
+                </tbody>
+              </table>
+            </div>
+          ` : `<div class="import-history-empty">No saved imports yet. Upload a monthly export, then choose Save Current Import to keep it on this device.</div>`}
+        </div>
+      `;
+    }
+
     function renderBarChart(items) {
       if (!items.length) return `<div class="empty-state">No departmental data available.</div>`;
       const max = Math.max(...items.map((item) => item.total), 1);
@@ -6262,6 +6641,7 @@
               </div>
             </div>
             ${renderUploadPanel()}
+            ${renderImportHistoryPanel()}
           </div>
 
           <div class="panel">
@@ -6791,7 +7171,7 @@
       }
     }
 
-    document.addEventListener("click", (event) => {
+    document.addEventListener("click", async (event) => {
       const viewButton = event.target.closest("[data-view]");
       if (viewButton) {
         state.activeView = viewButton.dataset.view;
@@ -6829,6 +7209,7 @@
         state.globalSearch = "";
         state.uploadedFileName = "Built-in realistic mock ticket log";
         state.uploadStatus = "Data reset to the Qist starter model";
+        clearActiveImport();
         render();
         return;
       }
@@ -6838,7 +7219,34 @@
         state.mapping = defaultMapping();
         state.uploadedFileName = "Built-in realistic mock ticket log";
         state.uploadStatus = `${sampleTickets.length} mock tickets loaded by default`;
+        clearActiveImport();
         render();
+        return;
+      }
+      if (action === "save-current-import") {
+        await saveCurrentImport();
+        return;
+      }
+      if (action === "refresh-import-history") {
+        state.importHistoryStatus = "";
+        await refreshImportHistory(false);
+        state.importHistoryStatus = state.importHistory.length
+          ? `${state.importHistory.length} saved ${state.importHistory.length === 1 ? "import" : "imports"} on this device.`
+          : "No saved imports yet.";
+        render();
+        return;
+      }
+      if (action === "load-saved-import") {
+        await loadSavedImport(actionButton.dataset.importId);
+        return;
+      }
+      if (action === "delete-saved-import") {
+        const item = state.importHistory.find((record) => record.id === actionButton.dataset.importId);
+        const name = item?.name || "this saved import";
+        if (window.confirm(`Delete ${name} from this browser? Current dashboard data will remain if it is already loaded.`)) {
+          await deleteSavedImport(actionButton.dataset.importId);
+        }
+        return;
       }
       if (action === "add-department") {
         state.config.departments.push({ name: "New Department", costCenter: "CC-0000", headcount: 1, workstations: 0, carts: 0, seats: 0, eWasteAssets: 0 });
@@ -6994,6 +7402,8 @@
           state.mapping = inferMapping(state.headers);
           state.uploadedFileName = file.name;
           state.uploadStatus = `${rows.length} rows parsed. Review mappings before exporting.`;
+          clearActiveImport();
+          state.importHistoryStatus = "This upload is not saved yet. Choose Save Current Import to keep it on this device.";
           state.activeView = "tickets";
           render();
         } catch (error) {
@@ -7619,6 +8029,7 @@
     }
 
     render();
+    initializeImportHistory();
   </script>
 </body>
 </html>

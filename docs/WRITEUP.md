@@ -35,15 +35,19 @@ Qist solves this by combining configurable ITSM rates, departmental structure, a
 
    Upload a CSV or JSON ticket export. Qist normalizes common fields such as ticket ID, dates, department, priority, sensitivity, assets, device types, hours, SLA status, tier, project code, and after-hours flag.
 
-3. **Review analytics**
+3. **Save the import when appropriate**
+
+   Use Import History to explicitly save a monthly upload in the browser. Saved imports can be loaded later, auto-restore as the active dataset on future visits, and can be deleted from the same panel. This keeps persistence intentional rather than silently retaining sensitive operational logs.
+
+4. **Review analytics**
 
    The dashboard calculates total modeled spend, hours, average cost per ticket, top departments, monthly trends, SLA exposure, department mix, and recent ticket activity.
 
-4. **Inspect detail**
+5. **Inspect detail**
 
    Use the ticket inspector for row-level billing validation and the department invoice view for cost center and ledger-style reporting.
 
-5. **Export**
+6. **Export**
 
    Export a branded executive PDF report or CSV files for departmental ledgers and ticket-level reconciliation.
 
@@ -110,6 +114,8 @@ The dark mode intentionally leans into gunmetal, slate, and dark gray rather tha
 ## Privacy And Deployment
 
 Qist is a static, client-side application. There is no backend and no external data transmission by default. Ticket files are parsed in the browser, making it suitable for demos, internal modeling, and privacy-conscious operational analysis.
+
+Settings and organization branding are saved in browser storage. Ticket imports are saved only when the user explicitly selects **Save Current Import**. Those saved imports use local IndexedDB, stay on the current device/browser, and can be removed through Import History.
 
 Because the app is a single static HTML application, it can be published directly through GitHub Pages, Netlify, Vercel, or any static file host.
 
