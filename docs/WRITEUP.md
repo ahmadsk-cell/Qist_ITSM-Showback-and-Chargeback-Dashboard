@@ -41,7 +41,7 @@ Qist solves this by combining configurable ITSM rates, departmental structure, a
 
 4. **Review analytics**
 
-   The dashboard calculates total modeled spend, hours, average cost per ticket, top departments, monthly trends, SLA exposure, department mix, and recent ticket activity.
+   The dashboard calculates total modeled spend, hours, average cost per ticket, top departments, SLA exposure, department mix, and recent ticket activity. The cost trend can switch between weekly and monthly buckets so a single monthly upload still produces a useful week-by-week operational view.
 
 5. **Inspect detail**
 

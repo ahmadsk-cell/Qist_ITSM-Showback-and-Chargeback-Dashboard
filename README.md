@@ -13,7 +13,7 @@ The name **Qist** was chosen to signal fairness and measured allocation: each de
 - CSV and JSON uploader with smart field mapping for common ticket export columns.
 - Configurable departments, headcount, hourly rates, flat fees, SLA multipliers, after-hours rules, asset rates, license rates, PHI/compliance surcharges, e-waste charges, and shared overhead.
 - Showback/chargeback mode switch for informational reporting or ledger-style recovery views.
-- Executive dashboard with KPI cards, monthly cost trend, department mix, top cost drivers, and recent ticket activity.
+- Executive dashboard with KPI cards, weekly/monthly cost trend toggle, department mix, top cost drivers, and recent ticket activity.
 - Ticket inspector with filters for department, priority, sensitivity, and free-text search.
 - Optional Import History for saving monthly ticket uploads locally in the browser with load/delete controls.
 - Appearance settings for organization details and logo branding.
@@ -55,7 +55,7 @@ http://127.0.0.1:4173/index.html
 
 ## How To Use
 
-1. Start on **Dashboard** to review total modeled recovery, top departments, spend trends, SLA exposure, and recent ticket activity.
+1. Start on **Dashboard** to review total modeled recovery, top departments, spend trends, SLA exposure, and recent ticket activity. Use the **Weekly / Monthly** trend toggle to inspect a single monthly import by week or summarize longer datasets by month.
 2. Go to **Log Upload** to drag in a CSV or JSON ticket export. Qist detects common column names and lets you inspect the mapping before analysis.
 3. Choose **Save Current Import** in Import History if the dataset should be retained on this device. Saved imports auto-restore on future visits and can be loaded or deleted at any time.
 4. Use **Rate Settings** to tune labor rates, flat fees, SLA multipliers, asset/license subscriptions, compliance surcharges, and overhead allocation.

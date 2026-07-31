@@ -4794,6 +4794,27 @@
       pointer-events: none;
     }
 
+    .trend-toggle {
+      flex: 0 0 auto;
+      min-height: 30px;
+      background: color-mix(in srgb, var(--surface-2) 78%, transparent);
+      border-color: color-mix(in srgb, var(--hairline-strong) 78%, transparent);
+    }
+
+    .trend-toggle button {
+      min-height: 24px;
+      padding: 0 10px;
+      color: var(--main-muted);
+      font-size: 11px;
+      font-weight: 560;
+    }
+
+    .trend-toggle button.active {
+      color: var(--main-ink);
+      background: var(--surface-1);
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+    }
+
     .import-history {
       display: grid;
       gap: 12px;
@@ -5014,6 +5035,7 @@
       importHistoryReady: false,
       importHistoryStatus: "Saved imports stay local to this browser.",
       activeImportId: loadActiveImportId(),
+      trendGranularity: "weekly",
       selectedDepartment: "ER",
       filters: { search: "", department: "All", priority: "All", sensitivity: "All" },
       tickets: [],
@@ -5481,9 +5503,19 @@
       return matched ? matched.name : raw;
     }
 
-    function monthKey(dateValue) {
+    function parseDateValue(dateValue) {
+      const dateText = String(dateValue ?? "").trim();
+      const dateOnly = dateText.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (dateOnly) {
+        return new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]));
+      }
       const date = new Date(dateValue);
-      if (Number.isNaN(date.getTime())) return "Unknown";
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    function monthKey(dateValue) {
+      const date = parseDateValue(dateValue);
+      if (!date) return "Unknown";
       return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0");
     }
 
@@ -5493,8 +5525,38 @@
       return date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
     }
 
+    function weekKey(dateValue) {
+      const date = parseDateValue(dateValue);
+      if (!date) return "Unknown";
+      const weekStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const mondayOffset = (weekStart.getDay() + 6) % 7;
+      weekStart.setDate(weekStart.getDate() - mondayOffset);
+      return [
+        weekStart.getFullYear(),
+        String(weekStart.getMonth() + 1).padStart(2, "0"),
+        String(weekStart.getDate()).padStart(2, "0")
+      ].join("-");
+    }
+
+    function weekLabel(key) {
+      if (key === "Unknown") return "Unknown";
+      const date = new Date(key + "T00:00:00");
+      if (Number.isNaN(date.getTime())) return "Unknown";
+      return "Week of " + date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    }
+
+    function trendPeriodLabel(key, granularity) {
+      return granularity === "weekly" ? weekLabel(key) : monthLabel(key);
+    }
+
+    function trendKeyForTicket(ticket, granularity) {
+      return granularity === "weekly" ? ticket.week : ticket.month;
+    }
+
     function computeTicket(row, index) {
       const rawPriority = getMappedValue(row, "priority") || "Low";
+      const createdDate = String(getMappedValue(row, "createdDate") || "");
+      const closedDate = String(getMappedValue(row, "closedDate") || "");
       const sensitivity = String(getMappedValue(row, "sensitivity") || "General IT");
       const tier = normalizeTier(getMappedValue(row, "tier"), sensitivity);
       const priority = normalizePriority(rawPriority);
@@ -5518,8 +5580,8 @@
       return {
         rowIndex: index,
         id: String(getMappedValue(row, "ticketId") || "ROW-" + String(index + 1).padStart(3, "0")),
-        createdDate: String(getMappedValue(row, "createdDate") || ""),
-        closedDate: String(getMappedValue(row, "closedDate") || ""),
+        createdDate,
+        closedDate,
         department: canonicalDepartment(getMappedValue(row, "department")),
         priority,
         sensitivity,
@@ -5540,7 +5602,8 @@
         sensitivitySurcharge,
         slaImpact,
         ticketTotal,
-        month: monthKey(getMappedValue(row, "createdDate"))
+        month: monthKey(createdDate),
+        week: weekKey(createdDate)
       };
     }
 
@@ -5632,15 +5695,7 @@
         };
       }).sort((a, b) => b.total - a.total);
 
-      const trendMap = new Map();
-      state.tickets.forEach((ticket) => {
-        if (!trendMap.has(ticket.month)) trendMap.set(ticket.month, { key: ticket.month, label: monthLabel(ticket.month), tickets: 0, cost: 0, hours: 0 });
-        const bucket = trendMap.get(ticket.month);
-        bucket.tickets += 1;
-        bucket.cost += ticket.ticketTotal;
-        bucket.hours += ticket.billedHours;
-      });
-      state.trend = Array.from(trendMap.values()).sort((a, b) => a.key.localeCompare(b.key));
+      state.trend = trendForTickets(state.tickets, state.trendGranularity);
 
       if (!state.summaries.some((summary) => summary.department === state.selectedDepartment)) {
         state.selectedDepartment = state.summaries[0]?.department || "";
@@ -5743,11 +5798,12 @@
       return state.summaries.filter((summary) => matchesTokens(summarySearchFields(summary), tokens));
     }
 
-    function trendForTickets(tickets) {
+    function trendForTickets(tickets, granularity = state.trendGranularity) {
       const trendMap = new Map();
       tickets.forEach((ticket) => {
-        if (!trendMap.has(ticket.month)) trendMap.set(ticket.month, { key: ticket.month, label: monthLabel(ticket.month), tickets: 0, cost: 0, hours: 0 });
-        const bucket = trendMap.get(ticket.month);
+        const key = trendKeyForTicket(ticket, granularity) || "Unknown";
+        if (!trendMap.has(key)) trendMap.set(key, { key, label: trendPeriodLabel(key, granularity), tickets: 0, cost: 0, hours: 0 });
+        const bucket = trendMap.get(key);
         bucket.tickets += 1;
         bucket.cost += ticket.ticketTotal;
         bucket.hours += ticket.billedHours;
@@ -6006,7 +6062,8 @@
       const scopedTickets = query ? ticketsForGlobalSearch(tokens) : state.tickets;
       const scopedSummaries = query ? filteredSummariesForSearch(tokens) : state.summaries;
       const topDrivers = scopedSummaries.slice(0, 3);
-      const trend = query ? trendForTickets(scopedTickets) : state.trend;
+      const trend = query ? trendForTickets(scopedTickets, state.trendGranularity) : state.trend;
+      const trendLabel = state.trendGranularity === "weekly" ? "Weekly" : "Monthly";
       const activeContext = [
         query ? `${scopedTickets.length} ticket ${scopedTickets.length === 1 ? "match" : "matches"}` : "",
         state.config.flatFeeMode ? "Flat fee basis" : "",
@@ -6029,8 +6086,11 @@
             </div>
             <div class="chart-panel">
               <div class="section-title-row">
-                <h2>${query ? "Matched cost trend" : "Monthly cost trend"}</h2>
-                <span class="soft-chip">${query ? "Filtered" : "Weekly"}</span>
+                <h2>${query ? `Matched ${trendLabel.toLowerCase()} cost trend` : `${trendLabel} cost trend`}</h2>
+                <div class="segmented trend-toggle" role="group" aria-label="Trend interval">
+                  <button class="${state.trendGranularity === "weekly" ? "active" : ""}" type="button" data-trend-granularity="weekly" aria-pressed="${state.trendGranularity === "weekly"}">Weekly</button>
+                  <button class="${state.trendGranularity === "monthly" ? "active" : ""}" type="button" data-trend-granularity="monthly" aria-pressed="${state.trendGranularity === "monthly"}">Monthly</button>
+                </div>
               </div>
               ${renderTrendChart(trend)}
             </div>
@@ -6367,7 +6427,10 @@
         const barHeight = Math.max(8, point.tickets / maxTickets * 76);
         return `<rect class="volume-bar" x="${x}" y="${padding.top + innerHeight - barHeight}" width="26" height="${barHeight}" rx="7"></rect>`;
       }).join("");
+      const labelEvery = Math.max(1, Math.ceil(points.length / 7));
       const labels = points.map((point, index) => {
+        const shouldLabel = points.length <= 7 || index === 0 || index === points.length - 1 || index % labelEvery === 0;
+        if (!shouldLabel) return "";
         const x = xFor(index);
         return `<text class="axis-label x-label" x="${x}" y="${height - 20}" text-anchor="middle">${svgText(point.label)}</text>`;
       }).join("");
@@ -7182,6 +7245,14 @@
       const modeButton = event.target.closest("[data-mode]");
       if (modeButton) {
         state.mode = modeButton.dataset.mode;
+        render();
+        return;
+      }
+
+      const trendButton = event.target.closest("[data-trend-granularity]");
+      if (trendButton) {
+        state.trendGranularity = trendButton.dataset.trendGranularity === "monthly" ? "monthly" : "weekly";
+        state.trend = trendForTickets(state.tickets, state.trendGranularity);
         render();
         return;
       }
