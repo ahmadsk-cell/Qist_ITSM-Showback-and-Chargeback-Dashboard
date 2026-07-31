@@ -27,6 +27,8 @@ Qist solves this by combining configurable ITSM rates, departmental structure, a
 
 ## Core Workflow
 
+The Management navigation includes a **Getting Started** page that explains this process in plain language, defines the billing terms used throughout Qist, and provides a repeatable monthly operating routine.
+
 1. **Configure the model**
 
    Add departments, headcount, cost centers, skill rates, flat fees, priority multipliers, SLA behavior, after-hours rules, asset subscription rates, and compliance fees.

@@ -13,10 +13,11 @@ The name **Qist** was chosen to signal fairness and measured allocation: each de
 - CSV and JSON uploader with smart field mapping for common ticket export columns.
 - Configurable departments, headcount, hourly rates, flat fees, SLA multipliers, after-hours rules, asset rates, license rates, PHI/compliance surcharges, e-waste charges, and shared overhead.
 - Showback/chargeback mode switch for informational reporting or ledger-style recovery views.
-- Executive dashboard with KPI cards, weekly/monthly cost trend toggle, department mix, top cost drivers, and recent ticket activity.
+- Executive dashboard with aligned recovery metrics, weekly/monthly cost trends, department mix, highest-spend departments, and recent ticket activity.
 - Ticket inspector with filters for department, priority, sensitivity, and free-text search.
 - Optional Import History for saving monthly ticket uploads locally in the browser with load/delete controls.
 - Appearance settings for organization details and logo branding.
+- Built-in Getting Started guide with a plain-language workflow, billing definitions, monthly routine, and local-data guidance.
 - Branded print-ready executive PDF report plus invoice-ready CSV exports.
 
 ## Screenshots
@@ -28,6 +29,10 @@ The name **Qist** was chosen to signal fairness and measured allocation: each de
 | Ticket Inspector | Appearance Settings |
 | --- | --- |
 | ![Qist ticket inspector](docs/screenshots/ticket-inspector.png) | ![Qist appearance and branding settings](docs/screenshots/appearance-branding.png) |
+
+| Getting Started Guide |
+| --- |
+| ![Qist getting started guide](docs/screenshots/getting-started.png) |
 
 | Executive Report Preview |
 | --- |
@@ -60,8 +65,9 @@ http://127.0.0.1:4173/index.html
 3. Choose **Save Current Import** in Import History if the dataset should be retained on this device. Saved imports auto-restore on future visits and can be loaded or deleted at any time.
 4. Use **Rate Settings** to tune labor rates, flat fees, SLA multipliers, asset/license subscriptions, compliance surcharges, and overhead allocation.
 5. Open **Appearance** to add the end user's organization name, division, address, prepared-by details, contact information, and logo.
-6. Use **Department Invoices** for department-level ledger views and cost-center detail.
-7. Use **Reports** or **Export PDF** to generate a branded executive report, ledger CSV, or calculated ticket CSV.
+6. Open **Getting Started** for the in-app setup workflow, monthly operating routine, and plain-language billing reference.
+7. Use **Department Invoices** for department-level ledger views and cost-center detail.
+8. Use **Reports** or **Export PDF** to generate a branded executive report, ledger CSV, or calculated ticket CSV.
 
 ## Supported Upload Fields
 
@@ -155,4 +161,3 @@ You can find me on LinkedIn [Ahmad Sheikh-Khalil](https://www.linkedin.com/in/ah
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
-

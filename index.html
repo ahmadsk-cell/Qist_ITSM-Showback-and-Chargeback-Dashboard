@@ -4899,9 +4899,532 @@
       font-weight: 650;
     }
 
+    /* Executive composition: one aligned lead row, followed by the analytical body. */
+    .mirai-dashboard {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 16px;
+    }
+
+    .executive-top,
+    .dashboard-body {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 284px;
+      gap: 16px;
+      min-width: 0;
+    }
+
+    .executive-top {
+      align-items: stretch;
+    }
+
+    .dashboard-body {
+      align-items: start;
+    }
+
+    .driver-module {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .executive-top > .rail-card {
+      height: 100%;
+      align-content: space-between;
+    }
+
+    .driver-section-title {
+      display: grid;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .driver-section-title > span,
+    .guide-kicker,
+    .guide-section-head > div > span,
+    .guide-aside-label {
+      color: var(--main-muted);
+      font-size: 10px;
+      font-weight: 620;
+      line-height: 1.2;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    .driver-section-title h2 {
+      font-size: 17px;
+      font-weight: 590;
+    }
+
+    .driver-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .driver-count {
+      color: var(--main-muted);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .text-action,
+    .workflow-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      min-height: 30px;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      color: var(--main-ink-soft);
+      font-family: var(--font-sans);
+      font-size: 11px;
+      font-weight: 570;
+      letter-spacing: 0;
+      cursor: pointer;
+    }
+
+    .text-action svg,
+    .workflow-action svg {
+      width: 14px;
+      height: 14px;
+      transition: transform 160ms ease;
+    }
+
+    .text-action:hover,
+    .workflow-action:hover {
+      color: var(--green);
+    }
+
+    .text-action:hover svg,
+    .workflow-action:hover svg {
+      transform: translateX(2px);
+    }
+
+    .text-action:focus-visible,
+    .workflow-action:focus-visible {
+      outline: 2px solid color-mix(in srgb, var(--green) 44%, transparent);
+      outline-offset: 4px;
+    }
+
+    .executive-top .driver-card {
+      height: 100%;
+    }
+
+    /* Getting Started */
+    .guide-page {
+      display: grid;
+      gap: 22px;
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    .guide-hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+      gap: 28px;
+      padding: 12px 2px 22px;
+      border-bottom: 1px solid var(--hairline);
+    }
+
+    .guide-hero > div:first-child {
+      max-width: 720px;
+    }
+
+    .guide-hero h2 {
+      margin: 7px 0 8px;
+      color: var(--main-ink);
+      font-size: 27px;
+      line-height: 1.15;
+      font-weight: 570;
+      letter-spacing: 0;
+    }
+
+    .guide-hero p {
+      margin: 0;
+      color: var(--main-muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .guide-hero-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .guide-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 310px;
+      gap: 22px;
+      align-items: start;
+    }
+
+    .guide-main,
+    .guide-sidebar {
+      display: grid;
+      gap: 18px;
+      min-width: 0;
+    }
+
+    .guide-surface {
+      overflow: hidden;
+      border: 1px solid var(--hairline-strong);
+      border-radius: 8px;
+      background: var(--card-bg);
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+    }
+
+    [data-theme="dark"] .guide-surface {
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
+    }
+
+    .guide-section-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 17px 18px 15px;
+      border-bottom: 1px solid var(--hairline);
+    }
+
+    .guide-section-head h3 {
+      margin: 4px 0 0;
+      color: var(--main-ink);
+      font-size: 16px;
+      line-height: 1.25;
+      font-weight: 590;
+      letter-spacing: 0;
+    }
+
+    .guide-duration {
+      color: var(--main-muted);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .workflow-list {
+      display: grid;
+    }
+
+    .workflow-step {
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 14px;
+      padding: 17px 18px;
+      border-bottom: 1px solid var(--hairline);
+      transition: background 150ms ease;
+    }
+
+    .workflow-step:last-child {
+      border-bottom: 0;
+    }
+
+    .workflow-step:hover {
+      background: color-mix(in srgb, var(--row-hover) 70%, transparent);
+    }
+
+    .step-number {
+      color: var(--green);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 650;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .workflow-step h4 {
+      margin: 0 0 4px;
+      color: var(--main-ink);
+      font-size: 13px;
+      line-height: 1.3;
+      font-weight: 610;
+      letter-spacing: 0;
+    }
+
+    .workflow-step p,
+    .benefit-item p,
+    .local-data-note p {
+      margin: 0;
+      color: var(--main-muted);
+      font-size: 11px;
+      line-height: 1.55;
+    }
+
+    .workflow-action {
+      min-width: 116px;
+      justify-content: flex-end;
+      white-space: nowrap;
+    }
+
+    .guide-glossary dl {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      margin: 0;
+    }
+
+    .guide-glossary dl > div {
+      padding: 15px 18px;
+      border-right: 1px solid var(--hairline);
+      border-bottom: 1px solid var(--hairline);
+    }
+
+    .guide-glossary dl > div:nth-child(2n) {
+      border-right: 0;
+    }
+
+    .guide-glossary dl > div:nth-last-child(-n + 2) {
+      border-bottom: 0;
+    }
+
+    .guide-glossary dt {
+      color: var(--main-ink);
+      font-size: 12px;
+      font-weight: 610;
+    }
+
+    .guide-glossary dd {
+      margin: 5px 0 0;
+      color: var(--main-muted);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .guide-aside-section {
+      padding: 4px 0 18px;
+      border-bottom: 1px solid var(--hairline);
+    }
+
+    .benefit-list {
+      display: grid;
+      gap: 0;
+      margin-top: 9px;
+    }
+
+    .benefit-item {
+      display: grid;
+      grid-template-columns: 30px minmax(0, 1fr);
+      gap: 11px;
+      padding: 12px 0;
+      border-bottom: 1px solid color-mix(in srgb, var(--hairline) 76%, transparent);
+    }
+
+    .benefit-item:last-child {
+      border-bottom: 0;
+    }
+
+    .benefit-icon {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border: 1px solid var(--hairline-strong);
+      border-radius: 7px;
+      color: var(--green);
+      background: color-mix(in srgb, var(--card-bg) 82%, var(--green) 4%);
+    }
+
+    .benefit-icon svg,
+    .local-data-note > span svg {
+      width: 15px;
+      height: 15px;
+    }
+
+    .benefit-item strong,
+    .local-data-note strong {
+      display: block;
+      margin-bottom: 3px;
+      color: var(--main-ink);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .monthly-list {
+      display: grid;
+      gap: 10px;
+      margin: 13px 0 0;
+      padding: 0;
+      list-style: none;
+      counter-reset: monthly;
+    }
+
+    .monthly-list li {
+      position: relative;
+      padding-left: 28px;
+      color: var(--main-muted);
+      font-size: 11px;
+      line-height: 1.48;
+      counter-increment: monthly;
+    }
+
+    .monthly-list li::before {
+      content: counter(monthly);
+      position: absolute;
+      top: 0;
+      left: 0;
+      color: var(--main-ink);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 650;
+    }
+
+    .local-data-note {
+      display: grid;
+      grid-template-columns: 30px minmax(0, 1fr);
+      gap: 11px;
+      padding: 15px;
+      border: 1px solid color-mix(in srgb, var(--green) 22%, var(--hairline-strong));
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--card-bg) 94%, var(--green) 6%);
+    }
+
+    .local-data-note > span {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      color: var(--green);
+    }
+
+    .guide-empty {
+      min-height: 240px;
+    }
+
+    .mobile-nav {
+      display: none;
+    }
+
     @media (max-width: 1040px) {
       .appearance-grid {
         grid-template-columns: 1fr;
+      }
+
+      .executive-top,
+      .dashboard-body,
+      .guide-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .dashboard-body .right-rail {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 900px) {
+      .sidebar {
+        position: relative;
+      }
+
+      .sidebar .sidebar-block {
+        display: none;
+      }
+
+      .mobile-nav {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+        overflow-x: auto;
+        padding: 0 10px 0 0;
+        scrollbar-width: none;
+      }
+
+      .mobile-nav::-webkit-scrollbar {
+        display: none;
+      }
+
+      .mobile-nav .nav-tab {
+        flex: 0 0 auto;
+      }
+
+      .topbar,
+      .topbar-inner {
+        height: auto;
+      }
+
+      .topbar {
+        top: 0;
+      }
+
+      .topbar-inner {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+        gap: 9px;
+        padding: 10px;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .market-title-row,
+      .guide-hero,
+      .guide-section-head {
+        align-items: flex-start;
+        grid-template-columns: 1fr;
+        flex-direction: column;
+      }
+
+      .driver-toolbar {
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .driver-count {
+        white-space: normal;
+      }
+
+      .guide-hero-actions,
+      .guide-hero-actions .btn {
+        width: 100%;
+      }
+
+      .guide-hero-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .header-actions {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .header-actions .btn,
+      .header-actions .theme-toggle {
+        min-width: 0;
+        padding-inline: 7px;
+      }
+
+      .workflow-step {
+        grid-template-columns: 30px minmax(0, 1fr);
+      }
+
+      .workflow-action {
+        grid-column: 2;
+        justify-content: flex-start;
+        min-width: 0;
+      }
+
+      .guide-glossary dl,
+      .dashboard-body .right-rail {
+        grid-template-columns: 1fr;
+      }
+
+      .guide-glossary dl > div,
+      .guide-glossary dl > div:nth-child(2n),
+      .guide-glossary dl > div:nth-last-child(-n + 2) {
+        border-right: 0;
+        border-bottom: 1px solid var(--hairline);
+      }
+
+      .guide-glossary dl > div:last-child {
+        border-bottom: 0;
       }
     }
   </style>
@@ -4929,6 +5452,7 @@
       { id: "tickets", label: "Log Upload", meta: "CSV", initial: "UP" },
       { id: "settings", label: "Rate Settings", meta: "$/hr", initial: "RT" },
       { id: "appearance", label: "Appearance", meta: "Brand", initial: "AP" },
+      { id: "guide", label: "Getting Started", meta: "Guide", initial: "GS" },
       { id: "departments", label: "Department Invoices", meta: "GL", initial: "IN" },
       { id: "exports", label: "Reports", meta: "PDF", initial: "RP" }
     ];
@@ -5855,6 +6379,73 @@
       };
     }
 
+    function guideContentModel() {
+      return {
+        steps: [
+          {
+            number: "01",
+            title: "Set up departments",
+            text: "Add each department and cost center, then enter headcount and monthly device or license quantities. Qist uses headcount to divide shared infrastructure costs fairly.",
+            action: "Open Rate Settings",
+            view: "settings",
+            keywords: "departments cost centers headcount assets licenses setup organization pro rata overhead"
+          },
+          {
+            number: "02",
+            title: "Define the billing rules",
+            text: "Enter support rates, priority multipliers, after-hours charges, SLA credits, asset subscriptions, and compliance fees. Choose hourly billing or flat ticket fees to match your operating model.",
+            action: "Configure rates",
+            view: "settings",
+            keywords: "hourly flat fees rates multipliers after hours sla priority compliance hipaa billing rules"
+          },
+          {
+            number: "03",
+            title: "Prepare the ticket export",
+            text: "Export one row per ticket from your ITSM platform as CSV or JSON. At minimum, include a ticket ID, created date, department, and time spent. Additional fields make the allocation more precise.",
+            action: "Open Log Upload",
+            view: "tickets",
+            keywords: "csv json export schema ticket id created date department hours time spent servicenow jira itsm"
+          },
+          {
+            number: "04",
+            title: "Map and verify the data",
+            text: "Drop the file into Log Upload and review Qist's suggested column mapping. Correct any unmatched columns, check the calculated preview, then save the import if you want it available on this device later.",
+            action: "Review mappings",
+            view: "tickets",
+            keywords: "mapping validate columns preview save import local device browser history"
+          },
+          {
+            number: "05",
+            title: "Review and distribute",
+            text: "Use the dashboard to spot spending patterns and SLA impact. Open Department Invoices for line-item detail, then export a branded PDF for leaders or CSV files for finance workflows.",
+            action: "Open Reports",
+            view: "exports",
+            keywords: "dashboard invoices reports pdf csv finance leaders export distribute review"
+          }
+        ],
+        benefits: [
+          { title: "Make IT demand visible", text: "Show leaders which departments, assets, and support tiers are driving cost.", icon: "eye", keywords: "visibility demand leaders departments assets cost" },
+          { title: "Build defensible allocations", text: "Trace every department total back to tickets, configured rates, shared overhead, and adjustments.", icon: "trace", keywords: "defensible allocation trace audit tickets rates overhead" },
+          { title: "Improve operating decisions", text: "Compare ticket volume, labor hours, SLA breaches, and asset density before budgets are set.", icon: "trend", keywords: "decisions budget sla breaches labor hours asset density trend" }
+        ],
+        terms: [
+          { term: "Showback", definition: "Reports what a department consumed without requesting a ledger transfer.", keywords: "showback informational awareness" },
+          { term: "Chargeback", definition: "Frames the same calculated costs for an actual finance or ledger transfer workflow.", keywords: "chargeback invoice ledger transfer finance" },
+          { term: "Pro-rata overhead", definition: "Divides shared IT costs by each department's share of configured headcount.", keywords: "pro rata overhead shared cost headcount" },
+          { term: "SLA multiplier", definition: "Raises the support cost for urgent work; breached-SLA credits are applied separately.", keywords: "sla multiplier priority urgent breach credit" }
+        ]
+      };
+    }
+
+    function guideSearchModel(tokens = searchTokens(state.globalSearch)) {
+      const content = guideContentModel();
+      const keep = (item) => !tokens.length || matchesTokens([item.title, item.text, item.term, item.definition, item.keywords], tokens);
+      const steps = content.steps.filter(keep);
+      const benefits = content.benefits.filter(keep);
+      const terms = content.terms.filter(keep);
+      return { steps, benefits, terms, total: steps.length + benefits.length + terms.length };
+    }
+
     function searchResultLabel() {
       const tokens = searchTokens(state.globalSearch);
       if (!tokens.length) return "";
@@ -5873,6 +6464,10 @@
       if (state.activeView === "appearance") {
         return "Brand profile";
       }
+      if (state.activeView === "guide") {
+        const meta = guideSearchModel(tokens);
+        return `${number(meta.total, 0)} guide ${meta.total === 1 ? "topic" : "topics"}`;
+      }
       if (state.activeView === "exports") {
         const rows = filteredSummariesForSearch(tokens);
         return `${number(rows.length, 0)} ${rows.length === 1 ? "department preview" : "department previews"}`;
@@ -5889,6 +6484,7 @@
         departments: "Search departments or ledger detail...",
         settings: "Search rates, fees, departments...",
         appearance: "Search brand settings...",
+        guide: "Search setup, imports, billing terms...",
         exports: "Search export previews..."
       }[state.activeView] || "Search data...";
     }
@@ -5909,6 +6505,7 @@
               ${state.activeView === "tickets" ? renderTickets() : ""}
               ${state.activeView === "settings" ? renderSettings() : ""}
               ${state.activeView === "appearance" ? renderAppearance(summary) : ""}
+              ${state.activeView === "guide" ? renderGuide() : ""}
               ${state.activeView === "exports" ? renderExports(summary) : ""}
             </main>
             <footer class="app-footer">Built by <a href="https://github.com/ahmadsk-cell/" target="_blank" rel="noopener">ASK Andalus</a></footer>
@@ -5919,8 +6516,8 @@
     }
 
     function renderSidebar(summary) {
-      const mainItems = navItems.filter((item) => !["settings", "appearance"].includes(item.id));
-      const managementItems = navItems.filter((item) => ["settings", "appearance"].includes(item.id));
+      const mainItems = navItems.filter((item) => !["settings", "appearance", "guide"].includes(item.id));
+      const managementItems = navItems.filter((item) => ["settings", "appearance", "guide"].includes(item.id));
       const sidebarPlaceholder = activeSearch() ? "Filtering data" : "Search data";
       return `
         <aside class="sidebar" aria-label="Qist navigation">
@@ -5943,6 +6540,9 @@
               ${managementItems.map((item) => renderNavButton(item)).join("")}
             </nav>
           </div>
+          <nav class="mobile-nav" aria-label="Mobile navigation">
+            ${navItems.map((item) => renderNavButton(item)).join("")}
+          </nav>
           <div class="sidebar-spacer" aria-hidden="true"></div>
           <div class="sidebar-user sidebar-dataset" aria-label="Current dataset summary">
             <div class="dataset-icon" aria-hidden="true">
@@ -5980,7 +6580,8 @@
         departments: `<svg ${attrs}><path d="M4 20V7l8-4 8 4v13"></path><path d="M9 20v-6h6v6"></path><path d="M8 9h.01M12 9h.01M16 9h.01"></path></svg>`,
         exports: `<svg ${attrs}><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg>`,
         settings: `<svg ${attrs}><path d="M4 7h10"></path><path d="M18 7h2"></path><circle cx="16" cy="7" r="2"></circle><path d="M4 17h2"></path><path d="M10 17h10"></path><circle cx="8" cy="17" r="2"></circle></svg>`,
-        appearance: `<svg ${attrs}><path d="M12 3 4.5 6.5v5c0 4.5 3 7.7 7.5 9.5 4.5-1.8 7.5-5 7.5-9.5v-5L12 3Z"></path><path d="M9 12h6"></path><path d="M12 9v6"></path></svg>`
+        appearance: `<svg ${attrs}><path d="M12 3 4.5 6.5v5c0 4.5 3 7.7 7.5 9.5 4.5-1.8 7.5-5 7.5-9.5v-5L12 3Z"></path><path d="M9 12h6"></path><path d="M12 9v6"></path></svg>`,
+        guide: `<svg ${attrs}><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v16H6.5A2.5 2.5 0 0 0 4 21.5z"></path><path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H13v16h4.5a2.5 2.5 0 0 1 2.5 2.5z"></path></svg>`
       };
       return icons[id] || `<svg ${attrs}><circle cx="12" cy="12" r="8"></circle></svg>`;
     }
@@ -6077,44 +6678,59 @@
         state.config.flatFeeMode ? "Flat fee basis" : "",
         state.mode === "chargeback" ? "Chargeback mode" : ""
       ].filter(Boolean);
-      const driverTitle = query ? `Matching cost ${topDrivers.length === 1 ? "driver" : "drivers"}` : `Top ${topDrivers.length} cost ${topDrivers.length === 1 ? "driver" : "drivers"}`;
+      const driverTitle = query ? "Matching departments" : "Highest spend departments";
       return `
         <section class="mirai-dashboard" aria-label="Qist executive dashboard">
-          <div class="dashboard-primary">
-            <div class="market-title-row">
-              <h2>${driverTitle}</h2>
-              ${activeContext.length ? `
-                <div class="market-filters" aria-label="Active dashboard context">
-                  ${activeContext.map((label) => `<span class="soft-chip">${label}</span>`).join("")}
+          <section class="executive-top" aria-label="Department spend and recovery summary">
+            <div class="driver-module">
+              <div class="market-title-row">
+                <div class="driver-section-title">
+                  <span>Cost allocation</span>
+                  <h2>${driverTitle}</h2>
                 </div>
-              ` : ""}
-            </div>
-            <div class="driver-grid">
-              ${topDrivers.length ? topDrivers.map((item, index) => renderDriverCard(item, index)).join("") : `<div class="empty-state search-empty">No departments match the current search.</div>`}
-            </div>
-            <div class="chart-panel">
-              <div class="section-title-row">
-                <h2>${query ? `Matched ${trendLabel.toLowerCase()} cost trend` : `${trendLabel} cost trend`}</h2>
-                <div class="segmented trend-toggle" role="group" aria-label="Trend interval">
-                  <button class="${state.trendGranularity === "weekly" ? "active" : ""}" type="button" data-trend-granularity="weekly" aria-pressed="${state.trendGranularity === "weekly"}">Weekly</button>
-                  <button class="${state.trendGranularity === "monthly" ? "active" : ""}" type="button" data-trend-granularity="monthly" aria-pressed="${state.trendGranularity === "monthly"}">Monthly</button>
+                <div class="driver-toolbar">
+                  ${activeContext.length ? `
+                    <div class="market-filters" aria-label="Active dashboard context">
+                      ${activeContext.map((label) => `<span class="soft-chip">${label}</span>`).join("")}
+                    </div>
+                  ` : `<span class="driver-count">${topDrivers.length} of ${scopedSummaries.length} departments</span>`}
+                  <button class="text-action" type="button" data-view="departments">
+                    View ledgers
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="m14 7 5 5-5 5"></path></svg>
+                  </button>
                 </div>
               </div>
-              ${renderTrendChart(trend)}
-            </div>
-            <div class="recent-panel">
-              <div class="section-title-row">
-                <h2>${query ? "Matching ticket activity" : "Recent ticket activity"}</h2>
-                <button class="btn ghost" type="button" data-view="tickets">See All &gt;</button>
+              <div class="driver-grid">
+                ${topDrivers.length ? topDrivers.map((item, index) => renderDriverCard(item, index)).join("") : `<div class="empty-state search-empty">No departments match the current search.</div>`}
               </div>
-              ${renderRecentTransactions(scopedTickets)}
             </div>
-          </div>
-          <aside class="right-rail" aria-label="Dashboard side panels">
             ${renderBillingRail(summary, avg, breachRate)}
-            ${renderPortfolioRail(scopedSummaries)}
-            ${renderTermsRail()}
-          </aside>
+          </section>
+          <section class="dashboard-body">
+            <div class="dashboard-primary">
+              <div class="chart-panel">
+                <div class="section-title-row">
+                  <h2>${query ? `Matched ${trendLabel.toLowerCase()} cost trend` : `${trendLabel} cost trend`}</h2>
+                  <div class="segmented trend-toggle" role="group" aria-label="Trend interval">
+                    <button class="${state.trendGranularity === "weekly" ? "active" : ""}" type="button" data-trend-granularity="weekly" aria-pressed="${state.trendGranularity === "weekly"}">Weekly</button>
+                    <button class="${state.trendGranularity === "monthly" ? "active" : ""}" type="button" data-trend-granularity="monthly" aria-pressed="${state.trendGranularity === "monthly"}">Monthly</button>
+                  </div>
+                </div>
+                ${renderTrendChart(trend)}
+              </div>
+              <div class="recent-panel">
+                <div class="section-title-row">
+                  <h2>${query ? "Matching ticket activity" : "Recent ticket activity"}</h2>
+                  <button class="btn ghost" type="button" data-view="tickets">See All &gt;</button>
+                </div>
+                ${renderRecentTransactions(scopedTickets)}
+              </div>
+            </div>
+            <aside class="right-rail" aria-label="Dashboard side panels">
+              ${renderPortfolioRail(scopedSummaries)}
+              ${renderTermsRail()}
+            </aside>
+          </section>
         </section>
       `;
     }
@@ -6437,10 +7053,12 @@
       }).join("");
       const labelEvery = Math.max(1, Math.ceil(points.length / 7));
       const labels = points.map((point, index) => {
-        const shouldLabel = points.length <= 7 || index === 0 || index === points.length - 1 || index % labelEvery === 0;
+        const lastIndex = points.length - 1;
+        const shouldLabel = points.length <= 7 || index === 0 || index === lastIndex || (index % labelEvery === 0 && index <= lastIndex - labelEvery);
         if (!shouldLabel) return "";
         const x = xFor(index);
-        return `<text class="axis-label x-label" x="${x}" y="${height - 20}" text-anchor="middle">${svgText(point.label)}</text>`;
+        const anchor = index === 0 ? "start" : index === lastIndex ? "end" : "middle";
+        return `<text class="axis-label x-label" x="${x}" y="${height - 20}" text-anchor="${anchor}">${svgText(point.label)}</text>`;
       }).join("");
       const markerIndex = Math.min(points.length - 1, Math.max(0, Math.floor(points.length / 2)));
       const marker = billablePoints[markerIndex];
@@ -6986,6 +7604,124 @@
               ` : ""}
             </div>
           ` : ""}
+        </section>
+      `;
+    }
+
+    function guideIcon(id) {
+      const attrs = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
+      return {
+        eye: `<svg ${attrs}><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path><circle cx="12" cy="12" r="2.5"></circle></svg>`,
+        trace: `<svg ${attrs}><path d="M5 4h5v5H5zM14 15h5v5h-5z"></path><path d="M10 6.5h3a3 3 0 0 1 3 3V15M14 17.5h-3a3 3 0 0 1-3-3V9"></path></svg>`,
+        trend: `<svg ${attrs}><path d="M4 19V5"></path><path d="M4 19h16"></path><path d="m7 15 4-4 3 2 5-6"></path></svg>`,
+        shield: `<svg ${attrs}><path d="M12 3 5 6v5c0 4.4 2.7 7.6 7 9.5 4.3-1.9 7-5.1 7-9.5V6z"></path><path d="m9 12 2 2 4-4"></path></svg>`,
+        clock: `<svg ${attrs}><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7v5l3 2"></path></svg>`
+      }[id] || `<svg ${attrs}><circle cx="12" cy="12" r="8"></circle></svg>`;
+    }
+
+    function renderGuide() {
+      const tokens = searchTokens(state.globalSearch);
+      const guide = guideSearchModel(tokens);
+      const hasResults = guide.total > 0;
+      return `
+        <section class="guide-page" aria-label="Getting started with Qist">
+          <header class="guide-hero">
+            <div>
+              <span class="guide-kicker">Qist operating guide</span>
+              <h2>From ticket export to accountable IT spend</h2>
+              <p>Use this workflow to configure Qist once, load each reporting period, verify the allocation, and share a report your department leaders can understand.</p>
+            </div>
+            <div class="guide-hero-actions">
+              <button class="btn primary" type="button" data-view="tickets">Upload ticket log</button>
+              <button class="btn" type="button" data-view="settings">Configure rates</button>
+            </div>
+          </header>
+
+          ${hasResults ? `
+            <div class="guide-layout">
+              <div class="guide-main">
+                ${guide.steps.length ? `
+                  <section class="guide-surface">
+                    <div class="guide-section-head">
+                      <div>
+                        <span>Recommended workflow</span>
+                        <h3>Five steps to a complete report</h3>
+                      </div>
+                      <span class="guide-duration">About 15 minutes after initial setup</span>
+                    </div>
+                    <div class="workflow-list">
+                      ${guide.steps.map((step) => `
+                        <article class="workflow-step">
+                          <span class="step-number">${step.number}</span>
+                          <div>
+                            <h4>${html(step.title)}</h4>
+                            <p>${html(step.text)}</p>
+                          </div>
+                          <button class="workflow-action" type="button" data-view="${step.view}">
+                            ${html(step.action)}
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="m14 7 5 5-5 5"></path></svg>
+                          </button>
+                        </article>
+                      `).join("")}
+                    </div>
+                  </section>
+                ` : ""}
+
+                ${guide.terms.length ? `
+                  <section class="guide-surface guide-glossary">
+                    <div class="guide-section-head">
+                      <div>
+                        <span>Plain-language reference</span>
+                        <h3>Billing terms used in Qist</h3>
+                      </div>
+                    </div>
+                    <dl>
+                      ${guide.terms.map((item) => `
+                        <div>
+                          <dt>${html(item.term)}</dt>
+                          <dd>${html(item.definition)}</dd>
+                        </div>
+                      `).join("")}
+                    </dl>
+                  </section>
+                ` : ""}
+              </div>
+
+              <aside class="guide-sidebar" aria-label="Qist benefits and operating notes">
+                ${guide.benefits.length ? `
+                  <section class="guide-aside-section">
+                    <span class="guide-aside-label">Why teams use Qist</span>
+                    <div class="benefit-list">
+                      ${guide.benefits.map((item) => `
+                        <div class="benefit-item">
+                          <span class="benefit-icon">${guideIcon(item.icon)}</span>
+                          <div><strong>${html(item.title)}</strong><p>${html(item.text)}</p></div>
+                        </div>
+                      `).join("")}
+                    </div>
+                  </section>
+                ` : ""}
+
+                <section class="guide-aside-section">
+                  <span class="guide-aside-label">A sensible monthly routine</span>
+                  <ol class="monthly-list">
+                    <li>Export the completed reporting period from your ITSM platform.</li>
+                    <li>Load the file and confirm the suggested column mapping.</li>
+                    <li>Review unusually high costs, SLA credits, and unmapped departments.</li>
+                    <li>Save the import locally, then export the executive PDF and finance CSV.</li>
+                  </ol>
+                </section>
+
+                <section class="local-data-note">
+                  <span>${guideIcon("shield")}</span>
+                  <div>
+                    <strong>Your data stays in this browser</strong>
+                    <p>Qist has no server or cloud database. Settings save automatically. Ticket files are retained only when you select Save Current Import, and clearing browser data removes them.</p>
+                  </div>
+                </section>
+              </aside>
+            </div>
+          ` : `<div class="empty-state guide-empty">No guide topics match &quot;${html(state.globalSearch)}&quot;.</div>`}
         </section>
       `;
     }
