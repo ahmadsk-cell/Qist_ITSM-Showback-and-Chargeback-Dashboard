@@ -27,7 +27,7 @@ Qist solves this by combining configurable ITSM rates, departmental structure, a
 
 ## Core Workflow
 
-The Management navigation includes a **Getting Started** page that explains this process in plain language, defines the billing terms used throughout Qist, and provides a repeatable monthly operating routine.
+The Management navigation includes a **Getting Started** page that explains this process in plain language, defines the billing terms used throughout Qist, and provides a dedicated **Monthly History** subtab for the recurring upload routine.
 
 1. **Configure the model**
 
@@ -37,13 +37,13 @@ The Management navigation includes a **Getting Started** page that explains this
 
    Upload a CSV or JSON ticket export. Qist normalizes common fields such as ticket ID, dates, department, priority, sensitivity, assets, device types, hours, SLA status, tier, project code, and after-hours flag. The Import Readiness check identifies missing required mappings, invalid rows, duplicate IDs, and departments that do not yet have configured allocation data.
 
-3. **Save the import when appropriate**
+3. **Confirm and save the reporting period**
 
-   Use Import History to explicitly save a monthly upload in the browser. Saved imports can be loaded later, auto-restore as the active dataset on future visits, and can be deleted from the same panel. This keeps persistence intentional rather than silently retaining sensitive operational logs.
+   Confirm the inferred `YYYY-MM` Reporting Period, give the dataset a useful name, and use Monthly History to save it in the browser. A duplicate month is replaced only after confirmation. Saved periods can be loaded later, auto-restore as the active dataset on future visits, and can be deleted from the same panel. This keeps persistence intentional rather than silently retaining sensitive operational logs.
 
 4. **Review analytics**
 
-   The dashboard calculates total modeled spend, billed hours, average net ticket cost, top departments, SLA exposure, department mix, and recent ticket activity. The ticket cost trend can switch between weekly and monthly buckets and compares actual gross support cost with actual net recovered cost after SLA credits.
+   The dashboard calculates total modeled spend, billed hours, average net ticket cost, top departments, SLA exposure, department mix, and recent ticket activity. Weekly analytics use only the active period. Monthly analytics compare every saved period, plus a confirmed active upload, and show actual gross support cost against net recovered cost after SLA credits.
 
 5. **Inspect detail**
 
@@ -82,7 +82,7 @@ Additional rules are then applied:
 - **Assets and subscriptions** add workstation, clinical cart, mobile/telemetry, and SaaS seat costs.
 - **Shared overhead** is distributed by headcount so infrastructure costs are visible and proportionate.
 
-Finance-ready imports should contain one reporting period. Recurring asset/license subscriptions and shared overhead are allocated once to the active dataset. Ticket trend charts use dated ticket charges only, so they remain useful without implying that recurring period-level allocations repeat every week.
+Finance-ready imports should contain one reporting period. Recurring asset/license subscriptions and shared overhead are allocated once to the active dataset. The active dataset powers all operational detail and exports; older saved rows appear only as recalculated points in Monthly analytics unless the user explicitly loads that period. Ticket trend charts use dated ticket charges only, so they remain useful without implying that recurring period-level allocations repeat every week.
 
 ## Branding And Reporting
 
@@ -119,7 +119,7 @@ The dark mode intentionally leans into gunmetal, slate, and dark gray rather tha
 
 Qist is a static, client-side application. There is no backend and no external data transmission by default. Ticket files are parsed in the browser, making it suitable for demos, internal modeling, and privacy-conscious operational analysis.
 
-Settings and organization branding are saved in browser storage. Ticket imports are saved only when the user explicitly selects **Save Current Import**. Those saved imports use local IndexedDB, stay on the current device/browser, and can be removed through Import History.
+Settings and organization branding are saved in browser storage. Ticket imports are saved only when the user explicitly selects **Save Reporting Period**. Those saved periods use local IndexedDB, stay on the current device/browser, and can be loaded, replaced, or removed through Monthly History.
 
 Because the app is a single static HTML application, it can be published directly through GitHub Pages, Netlify, Vercel, or any static file host.
 
@@ -129,7 +129,7 @@ Potential next steps:
 
 - Save and load named rate models.
 - Add department approval workflow states.
-- Add month-over-month imported datasets.
+- Add optional encrypted backup and restore for the device-local period archive.
 - Add ServiceNow/Jira export presets.
 - Add configurable GL account mapping.
 - Add XLSX export for finance teams.

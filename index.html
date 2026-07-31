@@ -4853,6 +4853,33 @@
       background: color-mix(in srgb, var(--surface-1) 84%, transparent);
     }
 
+    .period-fields {
+      display: grid;
+      grid-template-columns: minmax(180px, .55fr) minmax(260px, 1fr);
+      gap: 12px 14px;
+      align-items: end;
+      padding: 14px;
+      border: 1px solid color-mix(in srgb, var(--hairline-strong) 78%, transparent);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--surface-2) 72%, transparent);
+    }
+
+    .period-note {
+      grid-column: 1 / -1;
+      margin: -2px 0 0;
+      color: var(--main-muted);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .trend-scope {
+      display: block;
+      margin-top: 4px;
+      color: var(--main-muted);
+      font-size: 10px;
+      line-height: 1.35;
+    }
+
     .import-quality {
       display: grid;
       gap: 8px;
@@ -5266,6 +5293,79 @@
       gap: 8px;
     }
 
+    .guide-tabs {
+      display: flex;
+      width: fit-content;
+      margin: 16px 0 18px;
+      padding: 3px;
+      border: 1px solid var(--hairline-strong);
+      border-radius: 7px;
+      background: color-mix(in srgb, var(--surface-2) 76%, transparent);
+    }
+
+    .guide-tabs button {
+      min-height: 32px;
+      padding: 6px 12px;
+      border: 0;
+      border-radius: 5px;
+      background: transparent;
+      color: var(--main-muted);
+      font-size: 11px;
+      font-weight: 590;
+      box-shadow: none;
+    }
+
+    .guide-tabs button.active {
+      color: var(--main-ink);
+      background: var(--card-bg);
+      box-shadow: 0 1px 2px rgba(15, 23, 42, .1);
+    }
+
+    .history-scope-table {
+      min-width: 0;
+      table-layout: fixed;
+    }
+
+    .history-scope-table th,
+    .history-scope-table td {
+      white-space: normal;
+      overflow-wrap: normal;
+    }
+
+    .history-scope-table th:first-child {
+      width: 26%;
+    }
+
+    .history-scope-table th:nth-child(2) {
+      width: 36%;
+    }
+
+    .history-scope-table td:first-child {
+      color: var(--main-ink);
+      font-weight: 600;
+    }
+
+    .history-scope-table td:last-child {
+      color: var(--main-muted);
+    }
+
+    .period-example {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+      padding: 13px 0 0;
+      border-top: 1px solid var(--hairline);
+      color: var(--main-muted);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .period-example code {
+      color: var(--main-ink);
+      font-family: var(--font-mono);
+      font-size: 10px;
+    }
+
     .guide-layout {
       display: grid;
       grid-template-columns: minmax(0, 1fr) 310px;
@@ -5616,8 +5716,17 @@
       }
 
       .guide-glossary dl,
-      .dashboard-body .right-rail {
+      .dashboard-body .right-rail,
+      .period-fields {
         grid-template-columns: 1fr;
+      }
+
+      .guide-tabs {
+        width: 100%;
+      }
+
+      .guide-tabs button {
+        flex: 1 1 0;
       }
 
       .guide-glossary dl > div,
@@ -5767,6 +5876,9 @@
       mapping: defaultMapping(),
       uploadedFileName: "Built-in realistic mock ticket log",
       uploadStatus: "18 mock tickets loaded by default",
+      reportingPeriod: "2026-07",
+      importName: "Qist starter model",
+      guideSection: "workflow",
       importHistory: [],
       importHistoryReady: false,
       importHistoryStatus: "Saved imports stay local to this browser.",
@@ -5860,13 +5972,14 @@
       }
       if (importDbPromise) return importDbPromise;
       importDbPromise = new Promise((resolve, reject) => {
-        const request = window.indexedDB.open(importDbName, 1);
+        const request = window.indexedDB.open(importDbName, 2);
         request.onupgradeneeded = () => {
           const db = request.result;
-          if (!db.objectStoreNames.contains(importStoreName)) {
-            const store = db.createObjectStore(importStoreName, { keyPath: "id" });
-            store.createIndex("savedAt", "savedAt", { unique: false });
-          }
+          const store = db.objectStoreNames.contains(importStoreName)
+            ? request.transaction.objectStore(importStoreName)
+            : db.createObjectStore(importStoreName, { keyPath: "id" });
+          if (!store.indexNames.contains("savedAt")) store.createIndex("savedAt", "savedAt", { unique: false });
+          if (!store.indexNames.contains("periodKey")) store.createIndex("periodKey", "periodKey", { unique: false });
         };
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error || new Error("Import history could not be opened."));
@@ -5912,14 +6025,41 @@
       return importStoreRequest("readwrite", (store) => store.delete(id));
     }
 
+    function snapshotFromTickets(tickets) {
+      return {
+        tickets: tickets.length,
+        billedHours: tickets.reduce((sum, ticket) => sum + ticket.billedHours, 0),
+        grossSupport: tickets.reduce((sum, ticket) => sum + ticket.supportCost + ticket.sensitivitySurcharge, 0),
+        netRecovered: tickets.reduce((sum, ticket) => sum + ticket.ticketTotal, 0),
+        slaImpact: tickets.reduce((sum, ticket) => sum + ticket.slaImpact, 0),
+        breaches: tickets.filter((ticket) => ticket.breached).length
+      };
+    }
+
+    function snapshotForRows(rows, mapping, headers) {
+      const quality = evaluateImportQuality(rows, mapping, headers);
+      return snapshotFromTickets(quality.acceptedRows.map(({ row, index }) => computeTicket(row, index, mapping)));
+    }
+
     function summarizeImportRecord(record) {
+      const rows = Array.isArray(record.rows) ? record.rows : [];
+      const headers = Array.isArray(record.headers) && record.headers.length ? record.headers : headersFromRows(rows);
+      const mapping = record.mapping && typeof record.mapping === "object" ? record.mapping : inferMapping(headers);
+      const periodKey = isValidReportingPeriod(record.periodKey)
+        ? record.periodKey
+        : inferReportingPeriod(rows, mapping);
       return {
         id: record.id,
-        name: record.name,
+        name: record.name || (periodKey ? `${reportingPeriodLabel(periodKey)} ITSM Export` : "Saved import"),
         sourceFileName: record.sourceFileName,
         savedAt: record.savedAt,
-        rowCount: parseNumber(record.rowCount, Array.isArray(record.rows) ? record.rows.length : 0),
-        headers: Array.isArray(record.headers) ? record.headers : []
+        rowCount: parseNumber(record.rowCount, rows.length),
+        headers,
+        rows,
+        mapping,
+        periodKey,
+        periodLabel: reportingPeriodLabel(periodKey),
+        snapshot: snapshotForRows(rows, mapping, headers)
       };
     }
 
@@ -5927,7 +6067,7 @@
       if (!("indexedDB" in window)) {
         state.importHistory = [];
         state.importHistoryReady = false;
-        state.importHistoryStatus = "Import History needs a browser with IndexedDB support.";
+        state.importHistoryStatus = "Monthly History needs a browser with IndexedDB support.";
         if (renderAfter) render();
         return;
       }
@@ -5935,7 +6075,7 @@
         const records = await getAllImportRecords();
         state.importHistory = records
           .map(summarizeImportRecord)
-          .sort((a, b) => String(b.savedAt).localeCompare(String(a.savedAt)));
+          .sort((a, b) => String(b.periodKey).localeCompare(String(a.periodKey)) || String(b.savedAt).localeCompare(String(a.savedAt)));
         state.importHistoryReady = true;
         if (!state.importHistoryStatus) {
           state.importHistoryStatus = state.importHistory.length
@@ -5945,7 +6085,7 @@
       } catch (error) {
         state.importHistory = [];
         state.importHistoryReady = false;
-        state.importHistoryStatus = `Import History unavailable: ${error.message}`;
+        state.importHistoryStatus = `Monthly History unavailable: ${error.message}`;
       }
       if (renderAfter) render();
     }
@@ -5955,6 +6095,9 @@
     }
 
     function createImportName() {
+      const customName = String(state.importName || "").trim();
+      if (customName) return customName;
+      if (state.reportingPeriod) return `${reportingPeriodLabel(state.reportingPeriod)} ITSM Export`;
       const source = String(state.uploadedFileName || "Ticket import").replace(/\.(csv|json)$/i, "").trim() || "Ticket import";
       const date = new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
       return source.includes("Built-in") ? `Starter model - ${date}` : `${source} - ${date}`;
@@ -5986,8 +6129,12 @@
       state.headers = Array.isArray(record.headers) && record.headers.length ? record.headers : headersFromRows(record.rows);
       state.mapping = record.mapping && typeof record.mapping === "object" ? record.mapping : inferMapping(state.headers);
       state.uploadedFileName = record.sourceFileName || record.name || "Saved import";
-      state.uploadStatus = status || `${record.rowCount || record.rows.length} rows restored from Import History.`;
+      state.uploadStatus = status || `${record.rowCount || record.rows.length} rows restored from Monthly History.`;
       state.activeImportId = record.id;
+      state.reportingPeriod = isValidReportingPeriod(record.periodKey)
+        ? record.periodKey
+        : inferReportingPeriod(state.rawRows, state.mapping);
+      state.importName = record.name || (state.reportingPeriod ? `${reportingPeriodLabel(state.reportingPeriod)} ITSM Export` : "Saved import");
       state.filters = { search: "", department: "All", priority: "All", sensitivity: "All" };
       saveActiveImportId(record.id);
     }
@@ -5998,24 +6145,42 @@
         render();
         return;
       }
+      if (!isValidReportingPeriod(state.reportingPeriod)) {
+        state.importHistoryStatus = "Choose a valid Reporting Period before saving.";
+        render();
+        return;
+      }
       try {
-        const existing = state.importHistory.find((item) => item.id === state.activeImportId);
+        const quality = evaluateImportQuality();
+        if (quality.missingMappings.length || !quality.acceptedRows.length) {
+          state.importHistoryStatus = "Resolve required mappings and invalid rows before saving this period.";
+          render();
+          return;
+        }
+        const existingPeriod = state.importHistory.find((item) => item.periodKey === state.reportingPeriod && item.id !== state.activeImportId);
+        if (existingPeriod && !window.confirm(`${reportingPeriodLabel(state.reportingPeriod)} is already saved. Replace that reporting period with the current upload?`)) return;
+        const activeSaved = state.importHistory.find((item) => item.id === state.activeImportId);
+        if (existingPeriod && activeSaved && existingPeriod.id !== activeSaved.id) await removeImportRecord(existingPeriod.id);
+        const existing = activeSaved || existingPeriod;
+        const snapshot = snapshotFromTickets(quality.acceptedRows.map(({ row, index }) => computeTicket(row, index)));
         const record = {
-          id: state.activeImportId || createImportId(),
-          name: existing?.name || createImportName(),
+          id: existing?.id || createImportId(),
+          name: createImportName(),
           sourceFileName: state.uploadedFileName,
           savedAt: new Date().toISOString(),
+          periodKey: state.reportingPeriod,
           rowCount: state.rawRows.length,
           headers: clone(state.headers),
           mapping: clone(state.mapping),
-          rows: clone(state.rawRows)
+          rows: clone(state.rawRows),
+          snapshot
         };
         await putImportRecord(record);
         state.activeImportId = record.id;
         saveActiveImportId(record.id);
         await refreshImportHistory(false);
-        state.importHistoryStatus = `${record.rowCount} rows saved locally as ${record.name}.`;
-        state.uploadStatus = `${record.rowCount} rows saved to Import History.`;
+        state.importHistoryStatus = `${reportingPeriodLabel(record.periodKey)} saved locally as ${record.name}.`;
+        state.uploadStatus = `${record.rowCount} rows saved to Monthly History.`;
       } catch (error) {
         state.importHistoryStatus = `Save failed: ${error.message}`;
       }
@@ -6058,7 +6223,7 @@
         try {
           const record = await getImportRecord(activeId);
           if (record) {
-            applyImportRecord(record, `${record.rowCount || record.rows.length} rows restored from saved Import History.`);
+            applyImportRecord(record, `${record.rowCount || record.rows.length} rows restored from Monthly History.`);
             state.importHistoryStatus = `Restored ${record.name} from this browser.`;
             render();
             return;
@@ -6173,8 +6338,8 @@
       return mapping;
     }
 
-    function getMappedValue(row, key) {
-      const mapped = state.mapping[key] || key;
+    function getMappedValue(row, key, mapping = state.mapping) {
+      const mapped = mapping[key] || key;
       const value = row[mapped];
       if (Array.isArray(value)) return value.join("; ");
       if (value && typeof value === "object") return JSON.stringify(value);
@@ -6291,6 +6456,33 @@
       return date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
     }
 
+    function reportingPeriodLabel(key) {
+      if (!isValidReportingPeriod(key)) return "Unspecified period";
+      const date = new Date(key + "-01T00:00:00");
+      return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    }
+
+    function isValidReportingPeriod(key) {
+      return /^\d{4}-(0[1-9]|1[0-2])$/.test(String(key || ""));
+    }
+
+    function periodKeysForRows(rows, mapping = state.mapping) {
+      return Array.from(new Set((rows || [])
+        .map((row) => monthKey(getMappedValue(row, "createdDate", mapping)))
+        .filter((key) => key !== "Unknown")))
+        .sort();
+    }
+
+    function inferReportingPeriod(rows, mapping = state.mapping) {
+      const counts = new Map();
+      (rows || []).forEach((row) => {
+        const key = monthKey(getMappedValue(row, "createdDate", mapping));
+        if (key !== "Unknown") counts.set(key, (counts.get(key) || 0) + 1);
+      });
+      return Array.from(counts.entries())
+        .sort((a, b) => b[1] - a[1] || b[0].localeCompare(a[0]))[0]?.[0] || "";
+    }
+
     function weekKey(dateValue) {
       const date = parseDateValue(dateValue);
       if (!date) return "Unknown";
@@ -6319,10 +6511,10 @@
       return granularity === "weekly" ? ticket.week : ticket.month;
     }
 
-    function evaluateImportQuality() {
+    function evaluateImportQuality(rows = state.rawRows, mapping = state.mapping, headers = state.headers) {
       const missingMappings = fieldDefinitions
         .filter((field) => field.required)
-        .filter((field) => !state.mapping[field.key] || !state.headers.includes(state.mapping[field.key]))
+        .filter((field) => !mapping[field.key] || !headers.includes(mapping[field.key]))
         .map((field) => field.label);
       const acceptedRows = [];
       const invalidRows = [];
@@ -6331,13 +6523,13 @@
       const seenTicketIds = new Set();
 
       if (!missingMappings.length) {
-        state.rawRows.forEach((row, index) => {
+        rows.forEach((row, index) => {
           const issues = [];
-          const ticketId = String(getMappedValue(row, "ticketId") || "").trim();
-          const createdDate = getMappedValue(row, "createdDate");
-          const department = String(getMappedValue(row, "department") || "").trim();
-          const rawHours = getMappedValue(row, "hours");
-          const hours = parseHours(rawHours, state.mapping.hours);
+          const ticketId = String(getMappedValue(row, "ticketId", mapping) || "").trim();
+          const createdDate = getMappedValue(row, "createdDate", mapping);
+          const department = String(getMappedValue(row, "department", mapping) || "").trim();
+          const rawHours = getMappedValue(row, "hours", mapping);
+          const hours = parseHours(rawHours, mapping.hours);
 
           if (!ticketId) issues.push("ticket ID");
           if (!createdDate || !parseDateValue(createdDate)) issues.push("created date");
@@ -6366,22 +6558,23 @@
         missingMappings,
         invalidRows,
         unknownDepartments: Array.from(unknownDepartments).sort(),
-        duplicateTicketIds: Array.from(duplicateTicketIds).sort()
+        duplicateTicketIds: Array.from(duplicateTicketIds).sort(),
+        periodKeys: periodKeysForRows(rows, mapping)
       };
     }
 
-    function computeTicket(row, index) {
-      const rawPriority = getMappedValue(row, "priority") || "Low";
-      const createdDate = String(getMappedValue(row, "createdDate") || "");
-      const closedDate = String(getMappedValue(row, "closedDate") || "");
-      const sensitivity = String(getMappedValue(row, "sensitivity") || "General IT");
-      const tier = normalizeTier(getMappedValue(row, "tier"), sensitivity);
+    function computeTicket(row, index, mapping = state.mapping) {
+      const rawPriority = getMappedValue(row, "priority", mapping) || "Low";
+      const createdDate = String(getMappedValue(row, "createdDate", mapping) || "");
+      const closedDate = String(getMappedValue(row, "closedDate", mapping) || "");
+      const sensitivity = String(getMappedValue(row, "sensitivity", mapping) || "General IT");
+      const tier = normalizeTier(getMappedValue(row, "tier", mapping), sensitivity);
       const priority = normalizePriority(rawPriority);
       const priorityRule = priorityConfig(priority);
-      const parsedHours = parseHours(getMappedValue(row, "hours"), state.mapping.hours);
+      const parsedHours = parseHours(getMappedValue(row, "hours", mapping), mapping.hours);
       const hours = Math.max(0, Number.isFinite(parsedHours) ? parsedHours : 0);
-      const afterHours = isAfterHours(getMappedValue(row, "afterHours"));
-      const slaStatus = normalizeSlaStatus(getMappedValue(row, "slaStatus"));
+      const afterHours = isAfterHours(getMappedValue(row, "afterHours", mapping));
+      const slaStatus = normalizeSlaStatus(getMappedValue(row, "slaStatus", mapping));
       const breached = slaStatus === "Breached";
       const sensitive = isSensitive(sensitivity);
       const billedHours = state.config.flatFeeMode ? hours : (afterHours ? Math.max(hours, state.config.afterHours.minimumHours) : hours);
@@ -6393,15 +6586,15 @@
       const sensitivitySurcharge = sensitive ? supportCost * (state.config.fees.hipaaSurchargePct / 100) : 0;
       const slaImpact = breached ? -(supportCost * (state.config.fees.slaBreachCreditPct / 100)) : 0;
       const ticketTotal = supportCost + sensitivitySurcharge + slaImpact;
-      const assets = splitList(getMappedValue(row, "assets"));
-      const deviceTypes = splitList(getMappedValue(row, "deviceTypes"));
+      const assets = splitList(getMappedValue(row, "assets", mapping));
+      const deviceTypes = splitList(getMappedValue(row, "deviceTypes", mapping));
 
       return {
         rowIndex: index,
-        id: String(getMappedValue(row, "ticketId") || "ROW-" + String(index + 1).padStart(3, "0")),
+        id: String(getMappedValue(row, "ticketId", mapping) || "ROW-" + String(index + 1).padStart(3, "0")),
         createdDate,
         closedDate,
-        department: canonicalDepartment(getMappedValue(row, "department")),
+        department: canonicalDepartment(getMappedValue(row, "department", mapping)),
         priority,
         sensitivity,
         assets,
@@ -6416,7 +6609,7 @@
         multiplier: priorityRule.multiplier,
         afterHours,
         afterHoursFee,
-        projectCode: String(getMappedValue(row, "projectCode") || ""),
+        projectCode: String(getMappedValue(row, "projectCode", mapping) || ""),
         supportCost,
         sensitivitySurcharge,
         slaImpact,
@@ -6444,6 +6637,7 @@
         invalidRows: quality.invalidRows,
         unknownDepartments: quality.unknownDepartments,
         duplicateTicketIds: quality.duplicateTicketIds,
+        periodKeys: quality.periodKeys,
         acceptedCount: quality.acceptedRows.length,
         rawCount: state.rawRows.length
       };
@@ -6642,6 +6836,39 @@
         bucket.hours += ticket.billedHours;
       });
       return Array.from(trendMap.values()).sort((a, b) => a.key.localeCompare(b.key));
+    }
+
+    function monthlyHistoryTrend() {
+      const periods = new Map();
+      state.importHistory.forEach((item) => {
+        if (!isValidReportingPeriod(item.periodKey) || !item.snapshot) return;
+        const snapshot = item.rows && item.mapping
+          ? snapshotForRows(item.rows, item.mapping, item.headers)
+          : item.snapshot;
+        periods.set(item.periodKey, {
+          key: item.periodKey,
+          label: monthLabel(item.periodKey),
+          tickets: snapshot.tickets,
+          grossCost: snapshot.grossSupport,
+          cost: snapshot.netRecovered,
+          slaImpact: snapshot.slaImpact,
+          hours: snapshot.billedHours
+        });
+      });
+      const includeActivePeriod = state.activeImportId || !/built-in/i.test(state.uploadedFileName);
+      if (includeActivePeriod && isValidReportingPeriod(state.reportingPeriod) && state.tickets.length) {
+        const snapshot = snapshotFromTickets(state.tickets);
+        periods.set(state.reportingPeriod, {
+          key: state.reportingPeriod,
+          label: monthLabel(state.reportingPeriod),
+          tickets: snapshot.tickets,
+          grossCost: snapshot.grossSupport,
+          cost: snapshot.netRecovered,
+          slaImpact: snapshot.slaImpact,
+          hours: snapshot.billedHours
+        });
+      }
+      return Array.from(periods.values()).sort((a, b) => a.key.localeCompare(b.key));
     }
 
     function departmentConfigFields(dept) {
@@ -6947,6 +7174,7 @@
             </div>
             <div class="status-line">
               <span class="pill">${html(state.uploadedFileName)}</span>
+              <span>${html(reportingPeriodLabel(state.reportingPeriod))}</span>
               <span>${html(state.uploadStatus)}</span>
               <span>${summary.tickets} tickets</span>
               <span>${state.summaries.length} departments</span>
@@ -6976,7 +7204,10 @@
       const scopedTickets = query ? ticketsForGlobalSearch(tokens) : state.tickets;
       const scopedSummaries = query ? filteredSummariesForSearch(tokens) : state.summaries;
       const topDrivers = scopedSummaries.slice(0, 3);
-      const trend = query ? trendForTickets(scopedTickets, state.trendGranularity) : state.trend;
+      const savedMonthlyTrend = state.trendGranularity === "monthly" && state.importHistory.length
+        ? monthlyHistoryTrend()
+        : state.trend;
+      const trend = query ? trendForTickets(scopedTickets, state.trendGranularity) : savedMonthlyTrend;
       const trendLabel = state.trendGranularity === "weekly" ? "Weekly" : "Monthly";
       const activeContext = [
         query ? `${scopedTickets.length} ticket ${scopedTickets.length === 1 ? "match" : "matches"}` : "",
@@ -7015,7 +7246,10 @@
             <div class="dashboard-primary">
               <div class="chart-panel">
                 <div class="section-title-row">
-                  <h2>${query ? `Matched ${trendLabel.toLowerCase()} ticket cost trend` : `${trendLabel} ticket cost trend`}</h2>
+                  <div>
+                    <h2>${query ? `Matched ${trendLabel.toLowerCase()} ticket cost trend` : `${trendLabel} ticket cost trend`}</h2>
+                    ${!query && state.trendGranularity === "monthly" && state.importHistory.length ? `<span class="trend-scope">Saved reporting periods; active month shown with current calculations</span>` : ""}
+                  </div>
                   <div class="segmented trend-toggle" role="group" aria-label="Trend interval">
                     <button class="${state.trendGranularity === "weekly" ? "active" : ""}" type="button" data-trend-granularity="weekly" aria-pressed="${state.trendGranularity === "weekly"}">Weekly</button>
                     <button class="${state.trendGranularity === "monthly" ? "active" : ""}" type="button" data-trend-granularity="monthly" aria-pressed="${state.trendGranularity === "monthly"}">Monthly</button>
@@ -7213,7 +7447,7 @@
         missingMappings: [], invalidRows: [], unknownDepartments: [], duplicateTicketIds: [], acceptedCount: 0, rawCount: state.rawRows.length
       };
       const blocked = quality.missingMappings.length > 0 || quality.acceptedCount === 0;
-      const review = !blocked && (quality.invalidRows.length || quality.unknownDepartments.length || quality.duplicateTicketIds.length);
+      const review = !blocked && (quality.invalidRows.length || quality.unknownDepartments.length || quality.duplicateTicketIds.length || (quality.periodKeys || []).length > 1);
       const tone = blocked ? "blocked" : (review ? "review" : "ready");
       const title = blocked ? "Mapping incomplete" : (review ? "Ready with review items" : "Ready for calculation");
       const details = [];
@@ -7225,6 +7459,7 @@
       }
       if (quality.unknownDepartments.length) details.push(`Unmapped departments receive no configured assets or overhead: ${quality.unknownDepartments.join(", ")}.`);
       if (quality.duplicateTicketIds.length) details.push(`Duplicate ticket IDs remain separate billing rows: ${quality.duplicateTicketIds.join(", ")}.`);
+      if ((quality.periodKeys || []).length > 1) details.push(`Rows span ${quality.periodKeys.length} months (${quality.periodKeys.map(monthLabel).join(", ")}); confirm the Reporting Period before saving.`);
       if (!details.length) details.push("Required fields are mapped and every row passed validation.");
 
       return `
@@ -7257,6 +7492,17 @@
             </div>
           </div>
           <input id="fileInput" class="file-input" type="file" accept=".csv,.json,application/json,text/csv">
+          <section class="period-fields" aria-label="Reporting period details">
+            <div class="field">
+              <label for="reportingPeriod">Reporting Period *</label>
+              <input id="reportingPeriod" class="input" type="month" value="${html(state.reportingPeriod)}" data-reporting-period>
+            </div>
+            <div class="field period-name-field">
+              <label for="importName">Dataset Name</label>
+              <input id="importName" class="input" type="text" maxlength="80" value="${html(state.importName)}" placeholder="July 2026 ITSM Export" data-import-name>
+            </div>
+            <p class="period-note">Qist infers the month from Created Date. Confirm it here before saving; this label controls Monthly History while the loaded dataset powers dashboard detail.</p>
+          </section>
           ${renderImportQuality()}
           <details>
             <summary><strong>Column Mapping</strong> <span class="muted">(${state.headers.length} detected columns)</span></summary>
@@ -7277,17 +7523,17 @@
     }
 
     function renderImportHistoryPanel() {
-      const saveLabel = state.activeImportId ? "Update Saved Import" : "Save Current Import";
+      const saveLabel = state.activeImportId ? "Update Reporting Period" : "Save Reporting Period";
       const rowsLabel = `${state.rawRows.length} current ${state.rawRows.length === 1 ? "row" : "rows"}`;
       return `
-        <div class="import-history" aria-label="Import History">
+        <div class="import-history" aria-label="Monthly History">
           <div class="import-history-head">
             <div>
-              <h3 class="import-history-title">Import History</h3>
+              <h3 class="import-history-title">Monthly History</h3>
               <div class="import-history-meta">${html(currentImportSummary())} | ${rowsLabel} | local browser storage</div>
             </div>
             <div class="inline-actions">
-              <button class="btn primary" type="button" data-action="save-current-import" ${state.rawRows.length ? "" : "disabled"}>${saveLabel}</button>
+              <button class="btn primary" type="button" data-action="save-current-import" ${state.tickets.length && isValidReportingPeriod(state.reportingPeriod) ? "" : "disabled"}>${saveLabel}</button>
               <button class="btn ghost" type="button" data-action="refresh-import-history">Refresh</button>
             </div>
           </div>
@@ -7300,7 +7546,8 @@
               <table class="import-history-table">
                 <thead>
                   <tr>
-                    <th>Saved Import</th>
+                    <th>Reporting Period</th>
+                    <th>Dataset</th>
                     <th>Saved</th>
                     <th class="numeric">Rows</th>
                     <th>Source</th>
@@ -7310,6 +7557,9 @@
                 <tbody>
                   ${state.importHistory.map((item) => `
                     <tr>
+                      <td>
+                        <strong>${html(item.periodLabel)}</strong>
+                      </td>
                       <td>
                         <span class="import-history-name">
                           <strong>${html(item.name)}</strong>
@@ -7330,7 +7580,7 @@
                 </tbody>
               </table>
             </div>
-          ` : `<div class="import-history-empty">No saved imports yet. Upload a monthly export, then choose Save Current Import to keep it on this device.</div>`}
+          ` : `<div class="import-history-empty">No reporting periods saved yet. Upload a monthly export, confirm its period, then choose Save Reporting Period.</div>`}
         </div>
       `;
     }
@@ -7959,6 +8209,74 @@
       }[id] || `<svg ${attrs}><circle cx="12" cy="12" r="8"></circle></svg>`;
     }
 
+    function renderMonthlyHistoryGuide() {
+      const steps = [
+        ["01", "Export one completed month", "Create one CSV or JSON export per reporting month. The file name is for your reference; Qist uses the confirmed Reporting Period field as the archive key."],
+        ["02", "Upload and confirm the period", "Open Log Upload, choose the file, review the inferred YYYY-MM period, and give the dataset a recognizable name such as June 2026 ITSM Export."],
+        ["03", "Resolve readiness findings", "Confirm the required mapping, excluded rows, duplicate IDs, unknown departments, and any warning that the file spans more than one month."],
+        ["04", "Save the reporting period", "Choose Save Reporting Period. If that month already exists, Qist asks before replacing it so the Monthly trend never double-counts a period."],
+        ["05", "Repeat, load, and compare", "Upload the next month. Load any saved month to make it the active operational dataset; switch the dashboard chart to Monthly to compare every retained period."]
+      ];
+      return `
+        <div class="guide-layout history-guide">
+          <div class="guide-main">
+            <section class="guide-surface">
+              <div class="guide-section-head">
+                <div><span>Period archive workflow</span><h3>Build a clean month-over-month record</h3></div>
+                <span class="guide-duration">One saved record per YYYY-MM period</span>
+              </div>
+              <div class="workflow-list">
+                ${steps.map(([numberValue, title, textValue]) => `
+                  <article class="workflow-step">
+                    <span class="step-number">${numberValue}</span>
+                    <div><h4>${title}</h4><p>${textValue}</p></div>
+                    <span></span>
+                  </article>
+                `).join("")}
+              </div>
+            </section>
+
+            <section class="guide-surface">
+              <div class="guide-section-head">
+                <div><span>Data scope</span><h3>What changes when a saved month is loaded</h3></div>
+              </div>
+              <div class="table-wrap">
+                <table class="history-scope-table">
+                  <thead><tr><th>View</th><th>Data used</th><th>Purpose</th></tr></thead>
+                  <tbody>
+                    <tr><td>Dashboard KPIs</td><td>Active reporting period</td><td>Current operating picture</td></tr>
+                    <tr><td>Weekly trend</td><td>Active reporting period</td><td>Intra-month support cost movement</td></tr>
+                    <tr><td>Ticket Log Inspector</td><td>Active reporting period</td><td>Row-level validation and billing</td></tr>
+                    <tr><td>Department Invoices & Reports</td><td>Active reporting period</td><td>Current ledger and exports</td></tr>
+                    <tr><td>Monthly trend</td><td>All saved periods plus the active upload</td><td>Historical comparison without mixing old tickets into current detail</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+
+          <aside class="guide-sidebar">
+            <section class="guide-aside-section">
+              <span class="guide-aside-label">Example</span>
+              <div class="period-example">
+                <span><code>2026-06</code> / June 2026 ITSM Export</span>
+                <span><code>2026-07</code> / July 2026 ITSM Export</span>
+                <p>With July loaded, all operational screens show July. The Monthly trend shows both June and July.</p>
+              </div>
+            </section>
+            <section class="guide-aside-section">
+              <span class="guide-aside-label">Replacement rule</span>
+              <p class="panel-subtitle">A Reporting Period is unique. Saving another file as the same month replaces that month only after confirmation, which prevents accidental duplicate points.</p>
+            </section>
+            <section class="local-data-note">
+              <span>${guideIcon("shield")}</span>
+              <div><strong>History is device-local</strong><p>Saved periods use this browser's IndexedDB storage. Back up source exports separately; clearing site data or changing browsers does not transfer the archive.</p></div>
+            </section>
+          </aside>
+        </div>
+      `;
+    }
+
     function renderGuide() {
       const tokens = searchTokens(state.globalSearch);
       const guide = guideSearchModel(tokens);
@@ -7977,7 +8295,12 @@
             </div>
           </header>
 
-          ${hasResults ? `
+          <div class="guide-tabs" role="tablist" aria-label="Getting Started sections">
+            <button class="${state.guideSection === "workflow" ? "active" : ""}" type="button" role="tab" aria-selected="${state.guideSection === "workflow"}" data-guide-section="workflow">Core Workflow</button>
+            <button class="${state.guideSection === "monthly" ? "active" : ""}" type="button" role="tab" aria-selected="${state.guideSection === "monthly"}" data-guide-section="monthly">Monthly History</button>
+          </div>
+
+          ${state.guideSection === "monthly" ? renderMonthlyHistoryGuide() : (hasResults ? `
             <div class="guide-layout">
               <div class="guide-main">
                 ${guide.steps.length ? `
@@ -8056,12 +8379,12 @@
                   <span>${guideIcon("shield")}</span>
                   <div>
                     <strong>Your data stays in this browser</strong>
-                    <p>Qist has no server or cloud database. Settings save automatically. Ticket files are retained only when you select Save Current Import, and clearing browser data removes them.</p>
+                    <p>Qist has no server or cloud database. Settings save automatically. Ticket files are retained only when you select Save Reporting Period, and clearing browser data removes them.</p>
                   </div>
                 </section>
               </aside>
             </div>
-          ` : `<div class="empty-state guide-empty">No guide topics match &quot;${html(state.globalSearch)}&quot;.</div>`}
+          ` : `<div class="empty-state guide-empty">No guide topics match &quot;${html(state.globalSearch)}&quot;.</div>`)}
         </section>
       `;
     }
@@ -8320,6 +8643,13 @@
     }
 
     document.addEventListener("click", async (event) => {
+      const guideSectionButton = event.target.closest("[data-guide-section]");
+      if (guideSectionButton) {
+        state.guideSection = guideSectionButton.dataset.guideSection === "monthly" ? "monthly" : "workflow";
+        render();
+        return;
+      }
+
       const departmentCard = event.target.closest("[data-department-card]");
       if (departmentCard) {
         state.selectedDepartment = departmentCard.dataset.departmentCard;
@@ -8373,6 +8703,8 @@
         state.globalSearch = "";
         state.uploadedFileName = "Built-in realistic mock ticket log";
         state.uploadStatus = "Data reset to the Qist starter model";
+        state.reportingPeriod = "2026-07";
+        state.importName = "Qist starter model";
         clearActiveImport();
         render();
         return;
@@ -8383,6 +8715,8 @@
         state.mapping = defaultMapping();
         state.uploadedFileName = "Built-in realistic mock ticket log";
         state.uploadStatus = `${sampleTickets.length} mock tickets loaded by default`;
+        state.reportingPeriod = "2026-07";
+        state.importName = "Qist starter model";
         clearActiveImport();
         render();
         return;
@@ -8467,7 +8801,24 @@
       const target = event.target;
       if (target.matches("[data-mapping-field]")) {
         state.mapping[target.dataset.mappingField] = target.value;
+        if (target.dataset.mappingField === "createdDate") {
+          const inferred = inferReportingPeriod(state.rawRows, state.mapping);
+          if (inferred) {
+            state.reportingPeriod = inferred;
+            state.importName = `${reportingPeriodLabel(inferred)} ITSM Export`;
+          }
+        }
         state.uploadStatus = "Column mapping updated and model recalculated";
+        render();
+        return;
+      }
+
+      if (target.matches("[data-reporting-period]")) {
+        const previousDefault = state.reportingPeriod ? `${reportingPeriodLabel(state.reportingPeriod)} ITSM Export` : "";
+        state.reportingPeriod = target.value;
+        if (!state.importName.trim() || state.importName === previousDefault) {
+          state.importName = state.reportingPeriod ? `${reportingPeriodLabel(state.reportingPeriod)} ITSM Export` : "";
+        }
         render();
         return;
       }
@@ -8572,6 +8923,11 @@
         return;
       }
 
+      if (target.matches("[data-import-name]")) {
+        state.importName = target.value;
+        return;
+      }
+
       if (target.matches("[data-org-path]")) {
         state.config.organization[target.dataset.orgPath] = target.value;
         saveConfig();
@@ -8589,9 +8945,13 @@
           state.headers = headersFromRows(rows);
           state.mapping = inferMapping(state.headers);
           state.uploadedFileName = file.name;
+          state.reportingPeriod = inferReportingPeriod(rows, state.mapping);
+          state.importName = state.reportingPeriod
+            ? `${reportingPeriodLabel(state.reportingPeriod)} ITSM Export`
+            : file.name.replace(/\.(csv|json)$/i, "");
           state.uploadStatus = `${rows.length} rows parsed. Review mappings before exporting.`;
           clearActiveImport();
-          state.importHistoryStatus = "This upload is not saved yet. Choose Save Current Import to keep it on this device.";
+          state.importHistoryStatus = "This upload is not saved yet. Confirm its Reporting Period, then choose Save Reporting Period.";
           state.activeView = "tickets";
           render();
         } catch (error) {
@@ -9041,7 +9401,7 @@
           <div class="qist-meta">IT chargeback and showback model</div>
         </div>
         <h1>${html(org.reportTitle || "IT Chargeback & Showback Executive Summary")}</h1>
-        <p class="subtitle">${html(org.division || "Information Technology")} | ${modeLabel} report generated ${html(generatedAt)}</p>
+        <p class="subtitle">${html(org.division || "Information Technology")} | ${html(reportingPeriodLabel(state.reportingPeriod))} | ${modeLabel} report generated ${html(generatedAt)}</p>
       </div>
       <aside class="org-block">
         <div class="org-logo">${orgLogo}</div>

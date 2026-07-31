@@ -16,9 +16,9 @@ The name **Qist** was chosen to signal fairness and measured allocation: each de
 - Showback/chargeback mode switch for informational reporting or ledger-style recovery views.
 - Executive dashboard with aligned recovery metrics, weekly/monthly cost trends, department mix, highest-spend departments, and recent ticket activity.
 - Ticket inspector with filters for department, priority, sensitivity, and free-text search.
-- Optional Import History for saving monthly ticket uploads locally in the browser with load/delete controls.
+- Period-aware Monthly History for saving one named ticket dataset per `YYYY-MM` reporting period, with load, replace, and delete controls.
 - Appearance settings for organization details and logo branding.
-- Built-in Getting Started guide with a plain-language workflow, billing definitions, monthly routine, and local-data guidance.
+- Built-in Getting Started guide with a dedicated Monthly History subtab, plain-language workflow, billing definitions, and local-data guidance.
 - Branded print-ready executive PDF report plus invoice-ready CSV exports.
 
 ## Screenshots
@@ -61,12 +61,12 @@ http://127.0.0.1:4173/index.html
 
 ## How To Use
 
-1. Start on **Dashboard** to review total modeled recovery, top departments, spend trends, SLA exposure, and recent ticket activity. Use the **Weekly / Monthly** trend toggle to inspect a single monthly import by week or summarize longer datasets by month.
+1. Start on **Dashboard** to review total modeled recovery, top departments, spend trends, SLA exposure, and recent ticket activity. **Weekly** uses the active dataset; **Monthly** compares all saved reporting periods.
 2. Go to **Log Upload** to drag in a CSV or JSON ticket export. Qist detects common column names and lets you inspect the mapping and Import Readiness result before analysis.
-3. Choose **Save Current Import** in Import History if the dataset should be retained on this device. Saved imports auto-restore on future visits and can be loaded or deleted at any time.
+3. Confirm the inferred **Reporting Period** and edit the **Dataset Name** if needed. Choose **Save Reporting Period** in Monthly History to retain it on this device. Saving the same month again asks before replacing it, so a period is never double-counted.
 4. Use **Rate Settings** to tune labor rates, flat fees, SLA multipliers, asset/license subscriptions, compliance surcharges, and overhead allocation.
 5. Open **Appearance** to add the end user's organization name, division, address, prepared-by details, contact information, and logo.
-6. Open **Getting Started** for the in-app setup workflow, monthly operating routine, and plain-language billing reference.
+6. Open **Getting Started** for the setup workflow and plain-language billing reference. Its **Monthly History** subtab explains the recurring upload process and which views use current versus historical data.
 7. Use **Department Invoices** for department-level ledger views and cost-center detail.
 8. Use **Reports** or **Export PDF** to generate a branded executive report, ledger CSV, or calculated ticket CSV.
 
@@ -120,6 +120,19 @@ Shared overhead is allocated by department headcount, making enterprise infrastr
 
 Use one reporting period per finance-ready import. Period-level asset subscriptions and shared overhead are allocated once to the active dataset, while weekly/monthly charts show actual gross and net ticket support cost for the dates in the file.
 
+## Reporting Periods And Monthly History
+
+Qist does not depend on a special file name. After parsing the file, it infers a `YYYY-MM` Reporting Period from the most common valid Created Date and asks the user to confirm it. The confirmed period is the unique archive key.
+
+1. Export one completed month from the ITSM platform.
+2. Upload it, confirm column mapping and Import Readiness, then confirm the Reporting Period.
+3. Save the period. A second save for the same `YYYY-MM` replaces that month only after confirmation.
+4. Upload and save the next month.
+5. Load any saved month to make it active for KPIs, ticket detail, department invoices, reports, and the Weekly trend.
+6. Switch the dashboard chart to Monthly to compare all saved periods. Historical points are recalculated with the currently configured rates so the series remains comparable.
+
+Saved periods live in IndexedDB for the current browser and device. They are not synced to another computer, included in the GitHub repository, or recoverable after browser site data is cleared. Keep the original monthly exports as the system-of-record backup.
+
 ## Exporting
 
 - **Executive PDF** opens a polished print-ready report. Use the browser print dialog to save it as PDF.
@@ -132,7 +145,7 @@ Organization details and logos configured in **Appearance** appear in the execut
 
 Qist runs entirely in the browser. Uploaded files are parsed locally and are not sent to a server.
 
-Settings, appearance, and theme preferences are saved in browser storage. Ticket uploads are not silently retained; use **Save Current Import** to explicitly store a monthly import in local IndexedDB. Saved imports stay on that device/browser and can be deleted from **Import History**.
+Settings, appearance, and theme preferences are saved in browser storage. Ticket uploads are not silently retained; use **Save Reporting Period** to explicitly store a monthly import in local IndexedDB. Saved periods stay on that device/browser and can be loaded or deleted from **Monthly History**.
 
 ## GitHub Pages
 

@@ -24,6 +24,20 @@ Load `sample-data/tickets.json`.
 - Reloading the page restores the saved rows and mapping.
 - Deleting the history record removes persistence without deleting the currently loaded in-memory rows.
 
+## Reporting Period And History Checks
+
+- Uploading a single-month file infers its `YYYY-MM` Reporting Period from Created Date.
+- A user can correct the Reporting Period and edit the Dataset Name before saving.
+- A file spanning more than one month shows an Import Readiness warning listing the detected months.
+- Saving June and then July creates two Monthly History records sorted newest first.
+- With July active, Dashboard KPIs, Recent Ticket Activity, Ticket Log Inspector, Department Invoices, Reports, and Weekly analytics contain July rows only.
+- Monthly analytics contain one June point and one July point.
+- Loading June makes June the active operational dataset without removing July from Monthly analytics.
+- Saving a second file as June prompts for replacement and leaves exactly one June point.
+- Deleting an inactive saved month removes its Monthly point. Deleting the active saved month removes the archive record but leaves those rows as the unsaved active dataset for the current session.
+- Reloading restores the most recently active saved period and its reporting metadata.
+- Changing a rate recalculates both the active period and historical Monthly points against the current rule set.
+
 ## Parser Edge Cases
 
 Verify an alias-based file with columns such as `Incident Number`, `Opened`, `Business Unit`, `Urgency`, `Duration Minutes`, `SLA`, `Assignment Group`, and `On Call`.
@@ -63,7 +77,7 @@ Verify an alias-based file with columns such as `Incident Number`, `Opened`, `Bu
 
 ## Analytics And Navigation
 
-- Weekly and monthly trend controls use actual dated ticket costs.
+- Weekly trend controls use actual dated ticket costs from the active period; Monthly uses the saved reporting-period archive.
 - The trend compares Gross Support with Net Recovered and shows Ticket Volume.
 - Global search scopes dashboard departments, trend points, and ticket activity.
 - Ticket filters combine department, priority, sensitivity, and text search.

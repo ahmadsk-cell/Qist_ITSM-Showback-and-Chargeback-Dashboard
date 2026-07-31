@@ -8,6 +8,17 @@ Use one completed reporting period per import, normally one calendar month. Asse
 
 If a source export spans several months, ticket trends remain valid, but the department total still represents one configured allocation period. Split multi-month exports before producing finance-ready chargeback files.
 
+## Reporting Period Contract
+
+The source file does not need a prescribed name. Qist infers a Reporting Period from the most common valid `createdDate` month and exposes it as a user-confirmed `YYYY-MM` field before the dataset is saved. The optional Dataset Name is descriptive only; Reporting Period is the unique Monthly History key.
+
+- Saving a new `YYYY-MM` creates one historical point.
+- Saving an existing `YYYY-MM` asks before replacing that period and does not create a duplicate point.
+- Loading a saved period makes its rows the active dataset for KPIs, tickets, departments, invoices, exports, and Weekly analytics.
+- Monthly analytics use every saved period plus the currently active unsaved upload when it has a confirmed period.
+- Historical ticket-cost snapshots are recalculated against the current Qist rate settings, keeping cross-period comparisons on one rate basis.
+- Multi-month files are flagged in Import Readiness. They may be saved under a confirmed period, but one completed calendar month per file is the finance-ready pattern.
+
 ## Required Fields
 
 | Qist field | Accepted content | Common source columns |
@@ -110,4 +121,4 @@ Showback and chargeback use the same calculations. Showback labels the result as
 
 ## Persistence And Privacy
 
-Rate settings, appearance, and theme are stored in browser storage. Uploaded ticket rows stay in memory unless the user explicitly selects **Save Current Import**, which stores that dataset in browser IndexedDB. Saved imports remain on that browser/device and are removed when deleted in Import History or when browser site data is cleared.
+Rate settings, appearance, and theme are stored in browser storage. Uploaded ticket rows stay in memory unless the user explicitly selects **Save Reporting Period**, which stores the rows, headers, mapping, name, period key, and summary snapshot in browser IndexedDB. Saved periods remain on that browser/device and are removed when deleted in Monthly History or when browser site data is cleared.
