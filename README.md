@@ -150,3 +150,4 @@ This is a static web app. To publish it with GitHub Pages:
 ## Built By
 
 Built by [ASK Andalus](https://github.com/ahmadsk-cell/).
+You can find me on LinkedIn [Ahmad Sheikh-Khalil](https://www.linkedin.com/in/ahmad-sheikh-khalil-161402149/).
