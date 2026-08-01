@@ -2,6 +2,16 @@
 
 This checklist records the expected behavior for a release-ready Qist build. Run it after changing parsing, calculations, settings, persistence, or exports.
 
+## Automated Checks
+
+Most fixtures and invariants below are executable. Run them first; only the items marked as manual need a browser.
+
+```bash
+npm test
+```
+
+The suite loads the engine directly out of `index.html`, so it cannot drift from shipped code. See `tests/harness.mjs`.
+
 ## Baseline Fixtures
 
 ### Canonical CSV
@@ -9,7 +19,7 @@ This checklist records the expected behavior for a release-ready Qist build. Run
 Load `sample-data/tickets.csv`.
 
 - Import Readiness reports `18 accepted`, `0 excluded`, `0 unmapped departments`, and `0 duplicate IDs`.
-- Total modeled allocation is `$52,082.21` with the starter settings.
+- Total modeled allocation is `$52,082.25` with the starter settings.
 - Billed hours are `55.6`.
 - Net average ticket cost is `$902` when rounded for the dashboard.
 - Ticket `INC-10041` is `$1,317.74` in hourly mode.
@@ -44,6 +54,7 @@ Verify an alias-based file with columns such as `Incident Number`, `Opened`, `Bu
 
 - Common aliases map automatically.
 - Decimal hours, `HH:MM`, `1h 30m`, explicit minute values, and numeric minute/second columns normalize to decimal hours.
+- The hours column unit is inferred from whole words only. `Admin Hours`, `Section Hours`, and `Determination Hours` stay decimal hours; only a real `minute`/`second` token converts. Column Mapping states the unit it inferred.
 - `Regular day`, `No`, `False`, and `0` do not trigger after-hours charges.
 - `On Call`, `After Hours`, `Yes`, `True`, and `1` do trigger after-hours rules.
 - Blank SLA values remain `Unknown` and do not receive a breach credit.
@@ -62,7 +73,10 @@ Verify an alias-based file with columns such as `Incident Number`, `Opened`, `Bu
 - SLA breach credit applies to support cost and is represented as a negative amount.
 - Gross trend cost equals support cost plus sensitivity surcharge.
 - Net trend cost equals gross trend cost plus SLA impact.
-- Shared overhead totals exactly the configured pool across configured departments with positive total headcount.
+- Every billable amount is rounded to cents where it is created, so aggregates are sums of cent-exact values.
+- Ledger CSV line items foot exactly to their own `total` row.
+- Ticket CSV rows foot exactly to the matching ledger line items, and each row's `billable_amount` equals its component columns.
+- Shared overhead totals exactly the configured pool across configured departments with positive total headcount, including pools that do not divide evenly.
 - Asset density uses workstation/cart subscription cost divided by workstation/cart units; SaaS seats and e-waste are excluded.
 
 ## Settings And Modes
@@ -81,6 +95,9 @@ Verify an alias-based file with columns such as `Incident Number`, `Opened`, `Bu
 - The trend compares Gross Support with Net Recovered and shows Ticket Volume.
 - Global search scopes dashboard departments, trend points, and ticket activity.
 - Ticket filters combine department, priority, sensitivity, and text search.
+- The Ticket Log Inspector pages at 200 rows. Exports and every total still cover the whole filtered set, not the visible page.
+- Changing a filter or search term returns the inspector to page one.
+- Search input is debounced, and the caret keeps its position when editing the middle of a query.
 - Department-card action buttons open the corresponding department ledger.
 - The Qist logo returns to Dashboard.
 

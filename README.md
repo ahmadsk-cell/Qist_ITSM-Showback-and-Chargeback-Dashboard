@@ -59,6 +59,16 @@ Then open:
 http://127.0.0.1:4173/index.html
 ```
 
+## Tests
+
+The calculation engine, parser, and CSV exports have an automated regression suite. It needs Node 18+ and has no dependencies:
+
+```bash
+npm test
+```
+
+The suite loads the engine straight out of `index.html`, so tests cannot drift from shipped code. It covers the documented fixtures, the ticket calculation order, overhead allocation, parser edge cases, and the reconciliation invariants that keep exported line items footing to their totals.
+
 ## How To Use
 
 1. Start on **Dashboard** to review total modeled recovery, top departments, spend trends, SLA exposure, and recent ticket activity. **Weekly** uses the active dataset; **Monthly** compares all saved reporting periods.
@@ -116,7 +126,9 @@ Ticket support cost can use flat tier fees or hourly calculation:
 ticket cost = hours x skill rate x priority/SLA multiplier
 ```
 
-Shared overhead is allocated by department headcount, making enterprise infrastructure cost visible without hiding assumptions.
+Shared overhead is allocated by department headcount, making enterprise infrastructure cost visible without hiding assumptions. It is distributed by largest remainder so the allocated shares sum to exactly the configured pool.
+
+Every billable amount is rounded to whole cents where it is created, so exported line items always foot to their own totals.
 
 Use one reporting period per finance-ready import. Period-level asset subscriptions and shared overhead are allocated once to the active dataset, while weekly/monthly charts show actual gross and net ticket support cost for the dates in the file.
 
@@ -171,7 +183,13 @@ This is a static web app. To publish it with GitHub Pages:
 +-- sample-data/
 |   +-- tickets.csv
 |   `-- tickets.json
++-- tests/
+|   +-- harness.mjs
+|   +-- calculations.test.mjs
+|   +-- exports.test.mjs
+|   `-- parsing.test.mjs
 +-- index.html
++-- package.json
 `-- README.md
 ```
 

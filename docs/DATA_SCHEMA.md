@@ -28,6 +28,8 @@ The source file does not need a prescribed name. Qist infers a Reporting Period 
 | `department` | Configured department name or cost center | Department, Cost Center, Business Unit, Division |
 | `hours` | Decimal hours, `HH:MM`, `1h 30m`, or a numeric minutes/seconds column | Hours, Time Spent, Work Hours, Duration Minutes |
 
+A bare number is read as decimal hours unless the column name contains a whole `minute`/`min` or `second`/`sec` word — `Duration Minutes` converts, `Admin Hours` does not. Column Mapping shows which unit was inferred; confirm it before exporting.
+
 Rows missing any required value, containing an invalid date, or containing invalid/negative hours are excluded from calculations. The Import Readiness panel reports exclusions before export.
 
 ## Optional Fields
@@ -87,6 +89,14 @@ net ticket cost = support cost + sensitivity surcharge + SLA credit
 ```
 
 In flat-fee mode, the configured tier fee replaces `billed hours x skill rate`. Priority multipliers, after-hours flat fees, sensitivity surcharges, and SLA credits still apply. The after-hours minimum does not change a flat tier fee.
+
+### Rounding Basis
+
+Each amount is rounded to whole cents at the point it becomes a billable line item — support cost, then the surcharge and credit taken from it, then the ticket total — and every department and dashboard figure is a sum of those cent-exact values. Half-cents round away from zero.
+
+This is what makes the exports reconcile: ledger line items foot to their own total row, ticket rows foot to the ledger, and each row's `billable_amount` equals its component columns. Carrying full floating-point precision and rounding only for display is what breaks that, because a column of displayed values no longer sums to its displayed total.
+
+Shared overhead is the one figure that cannot simply be rounded per department: three equal shares of a `$100.00` pool are `$33.33` each and lose a cent. Qist allocates by largest remainder, so the shares always sum to exactly the configured pool.
 
 ### Worked Example
 

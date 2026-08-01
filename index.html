@@ -419,6 +419,28 @@
       margin-top: 12px;
     }
 
+    .mapping-note {
+      margin: 6px 0 0;
+      font-size: 11px;
+      line-height: 1.4;
+      color: var(--muted);
+    }
+
+    .ticket-pager {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+      font-size: 12px;
+    }
+
+    .ticket-pager .inline-actions {
+      align-items: center;
+      gap: 10px;
+    }
+
     .field {
       display: grid;
       gap: 6px;
@@ -5886,6 +5908,7 @@
       trendGranularity: "weekly",
       selectedDepartment: "ER",
       filters: { search: "", department: "All", priority: "All", sensitivity: "All" },
+      ticketPage: 0,
       dataQuality: null,
       tickets: [],
       summaries: [],
@@ -5907,9 +5930,12 @@
       }
     }
 
+    const UNSAFE_CONFIG_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
     function mergeConfig(base, override) {
       if (!override || typeof override !== "object") return base;
       Object.keys(override).forEach((key) => {
+        if (UNSAFE_CONFIG_KEYS.has(key)) return;
         if (Array.isArray(override[key])) {
           base[key] = override[key];
         } else if (override[key] && typeof override[key] === "object" && base[key]) {
@@ -6029,9 +6055,9 @@
       return {
         tickets: tickets.length,
         billedHours: tickets.reduce((sum, ticket) => sum + ticket.billedHours, 0),
-        grossSupport: tickets.reduce((sum, ticket) => sum + ticket.supportCost + ticket.sensitivitySurcharge, 0),
-        netRecovered: tickets.reduce((sum, ticket) => sum + ticket.ticketTotal, 0),
-        slaImpact: tickets.reduce((sum, ticket) => sum + ticket.slaImpact, 0),
+        grossSupport: sumMoney(tickets.map((ticket) => ticket.supportCost + ticket.sensitivitySurcharge)),
+        netRecovered: sumMoney(tickets.map((ticket) => ticket.ticketTotal)),
+        slaImpact: sumMoney(tickets.map((ticket) => ticket.slaImpact)),
         breaches: tickets.filter((ticket) => ticket.breached).length
       };
     }
@@ -6039,6 +6065,39 @@
     function snapshotForRows(rows, mapping, headers) {
       const quality = evaluateImportQuality(rows, mapping, headers);
       return snapshotFromTickets(quality.acceptedRows.map(({ row, index }) => computeTicket(row, index, mapping)));
+    }
+
+    // Historical periods are deliberately recalculated against current rates, but
+    // doing that inside render() meant re-costing every archived ticket on every
+    // keystroke. Cache per record, keyed by the settings that affect the result.
+    const snapshotCache = new Map();
+    let snapshotCacheSignature = "";
+
+    function calculationSignature() {
+      const config = state.config;
+      return JSON.stringify([
+        config.flatFeeMode,
+        config.hourlyRates,
+        config.flatFees,
+        config.priorityMultipliers,
+        config.fees,
+        config.afterHours,
+        config.departments.map((dept) => [dept.name, dept.costCenter])
+      ]);
+    }
+
+    // savedAt is part of the key because replacing a reporting period reuses its id.
+    function cachedSnapshotForRecord(record) {
+      const signature = calculationSignature();
+      if (signature !== snapshotCacheSignature) {
+        snapshotCache.clear();
+        snapshotCacheSignature = signature;
+      }
+      const key = `${record.id || record.periodKey}|${record.savedAt || ""}`;
+      if (snapshotCache.has(key)) return snapshotCache.get(key);
+      const snapshot = snapshotForRows(record.rows, record.mapping, record.headers);
+      snapshotCache.set(key, snapshot);
+      return snapshot;
     }
 
     function summarizeImportRecord(record) {
@@ -6059,7 +6118,7 @@
         mapping,
         periodKey,
         periodLabel: reportingPeriodLabel(periodKey),
-        snapshot: snapshotForRows(rows, mapping, headers)
+        snapshot: cachedSnapshotForRecord({ id: record.id, savedAt: record.savedAt, periodKey, rows, mapping, headers })
       };
     }
 
@@ -6249,24 +6308,50 @@
         .replace(/"/g, "&quot;");
     }
 
+    // Every amount that becomes a billable line item is rounded to cents at the
+    // point it is created, so aggregates are sums of cent-exact values. Rounding
+    // only at display/export time lets line items disagree with their own totals.
+    function roundMoney(value) {
+      if (!Number.isFinite(value)) return 0;
+      // toPrecision strips binary representation noise (91.935 * 100 stored as
+      // 9193.499999999999) before the half-away-from-zero rounding decision.
+      const scaled = Number((Math.abs(value) * 100).toPrecision(12));
+      const rounded = Math.round(scaled) / 100;
+      return value < 0 ? -rounded : rounded;
+    }
+
+    function sumMoney(values) {
+      return roundMoney(values.reduce((sum, value) => sum + (Number.isFinite(value) ? value : 0), 0));
+    }
+
+    // toLocaleString builds a fresh formatter on every call, which dominates the
+    // cost of rendering or searching a large ticket set. Reuse one per shape.
+    const moneyFormat = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+    const moneyPreciseFormat = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const percentFormat = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 });
+    const numberFormats = new Map();
+
+    function numberFormat(digits) {
+      if (!numberFormats.has(digits)) {
+        numberFormats.set(digits, new Intl.NumberFormat("en-US", { maximumFractionDigits: digits }));
+      }
+      return numberFormats.get(digits);
+    }
+
     function money(value) {
-      const amount = Number.isFinite(value) ? value : 0;
-      return amount.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+      return moneyFormat.format(Number.isFinite(value) ? value : 0);
     }
 
     function moneyPrecise(value) {
-      const amount = Number.isFinite(value) ? value : 0;
-      return amount.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return moneyPreciseFormat.format(Number.isFinite(value) ? value : 0);
     }
 
     function number(value, digits = 1) {
-      const amount = Number.isFinite(value) ? value : 0;
-      return amount.toLocaleString("en-US", { maximumFractionDigits: digits });
+      return numberFormat(digits).format(Number.isFinite(value) ? value : 0);
     }
 
     function percent(value) {
-      const amount = Number.isFinite(value) ? value : 0;
-      return amount.toLocaleString("en-US", { maximumFractionDigits: 1 }) + "%";
+      return percentFormat.format(Number.isFinite(value) ? value : 0) + "%";
     }
 
     function compactMoney(value) {
@@ -6301,10 +6386,42 @@
 
       const parsed = Number(text.replace(/[\s,]/g, ""));
       if (!Number.isFinite(parsed)) return Number.NaN;
-      const header = normalizeHeader(sourceHeader);
-      if (/minute|min/.test(header)) return parsed / 60;
-      if (/second|sec/.test(header)) return parsed / 3600;
+      const unit = hoursColumnUnit(sourceHeader);
+      if (unit === "minutes") return parsed / 60;
+      if (unit === "seconds") return parsed / 3600;
       return parsed;
+    }
+
+    const HOUR_HEADER_TOKENS = new Set(["h", "hr", "hrs", "hour", "hours"]);
+    const MINUTE_HEADER_TOKENS = new Set(["m", "min", "mins", "minute", "minutes"]);
+    const SECOND_HEADER_TOKENS = new Set(["s", "sec", "secs", "second", "seconds"]);
+
+    // Split a header into whole words before testing for a unit. Substring tests
+    // against a squashed header misread ordinary columns: "Admin Hours" contains
+    // "min" and "Section Hours" contains "sec", so a plain hours column would be
+    // silently divided by 60 or 3600.
+    function headerTokens(value) {
+      return String(value ?? "")
+        .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+        .toLowerCase()
+        .split(/[^a-z0-9]+/)
+        .filter(Boolean);
+    }
+
+    // An explicit hour token wins, so "Duration Hours (Minutes Billed)" stays hours.
+    function hoursColumnUnit(sourceHeader) {
+      const tokens = headerTokens(sourceHeader);
+      if (tokens.some((token) => HOUR_HEADER_TOKENS.has(token))) return "hours";
+      if (tokens.some((token) => MINUTE_HEADER_TOKENS.has(token))) return "minutes";
+      if (tokens.some((token) => SECOND_HEADER_TOKENS.has(token))) return "seconds";
+      return "hours";
+    }
+
+    function hoursUnitNote(sourceHeader) {
+      const unit = hoursColumnUnit(sourceHeader);
+      if (unit === "minutes") return "Values read as minutes and converted to hours.";
+      if (unit === "seconds") return "Values read as seconds and converted to hours.";
+      return "Values read as decimal hours. HH:MM and \"1h 30m\" are also detected per row.";
     }
 
     function normalizeHeader(value) {
@@ -6582,10 +6699,10 @@
       const flatFee = state.config.flatFees[flatTierKey(tier)] || 0;
       const laborBase = state.config.flatFeeMode ? flatFee : billedHours * rate;
       const afterHoursFee = afterHours ? state.config.afterHours.flatFee : 0;
-      const supportCost = (laborBase * priorityRule.multiplier) + afterHoursFee;
-      const sensitivitySurcharge = sensitive ? supportCost * (state.config.fees.hipaaSurchargePct / 100) : 0;
-      const slaImpact = breached ? -(supportCost * (state.config.fees.slaBreachCreditPct / 100)) : 0;
-      const ticketTotal = supportCost + sensitivitySurcharge + slaImpact;
+      const supportCost = roundMoney((laborBase * priorityRule.multiplier) + afterHoursFee);
+      const sensitivitySurcharge = sensitive ? roundMoney(supportCost * (state.config.fees.hipaaSurchargePct / 100)) : 0;
+      const slaImpact = breached ? -roundMoney(supportCost * (state.config.fees.slaBreachCreditPct / 100)) : 0;
+      const ticketTotal = roundMoney(supportCost + sensitivitySurcharge + slaImpact);
       const assets = splitList(getMappedValue(row, "assets", mapping));
       const deviceTypes = splitList(getMappedValue(row, "deviceTypes", mapping));
 
@@ -6620,13 +6737,37 @@
     }
 
     function departmentAssetCosts(dept) {
-      const managedAssetSubscription =
+      const managedAssetSubscription = roundMoney(
         parseNumber(dept.workstations) * state.config.assetRates.workstation +
-        parseNumber(dept.carts) * state.config.assetRates.mobileCart;
-      const licenseSubscription = parseNumber(dept.seats) * state.config.assetRates.saasSeat;
-      const assetSubscription = managedAssetSubscription + licenseSubscription;
-      const eWaste = parseNumber(dept.eWasteAssets) * state.config.fees.eWasteAssetFee;
-      return { managedAssetSubscription, licenseSubscription, assetSubscription, eWaste, total: assetSubscription + eWaste };
+        parseNumber(dept.carts) * state.config.assetRates.mobileCart
+      );
+      const licenseSubscription = roundMoney(parseNumber(dept.seats) * state.config.assetRates.saasSeat);
+      const assetSubscription = roundMoney(managedAssetSubscription + licenseSubscription);
+      const eWaste = roundMoney(parseNumber(dept.eWasteAssets) * state.config.fees.eWasteAssetFee);
+      return { managedAssetSubscription, licenseSubscription, assetSubscription, eWaste, total: roundMoney(assetSubscription + eWaste) };
+    }
+
+    // Rounding each department's pro-rata share independently would leave the
+    // configured overhead pool over- or under-recovered by a few cents. Largest
+    // remainder distributes the rounding residue so the shares sum to the pool.
+    function allocateOverhead(shares, pool) {
+      const target = roundMoney(pool);
+      const totalWeight = shares.reduce((sum, share) => sum + share.weight, 0);
+      if (!totalWeight || !target) return shares.map(() => 0);
+
+      const targetCents = Math.round(target * 100);
+      const exact = shares.map((share) => targetCents * (share.weight / totalWeight));
+      const floors = exact.map((value) => Math.floor(value));
+      let residue = targetCents - floors.reduce((sum, value) => sum + value, 0);
+
+      const order = exact
+        .map((value, index) => ({ index, remainder: value - floors[index] }))
+        .sort((a, b) => b.remainder - a.remainder || a.index - b.index);
+
+      for (let i = 0; i < order.length && residue > 0; i += 1, residue -= 1) {
+        floors[order[i].index] += 1;
+      }
+      return floors.map((cents) => cents / 100);
     }
 
     function aggregate() {
@@ -6641,7 +6782,6 @@
         acceptedCount: quality.acceptedRows.length,
         rawCount: state.rawRows.length
       };
-      const totalHeadcount = Math.max(1, state.config.departments.reduce((sum, dept) => sum + parseNumber(dept.headcount), 0));
       const map = new Map();
 
       state.config.departments.forEach((dept) => {
@@ -6698,12 +6838,21 @@
         summary.tickets.push(ticket);
       });
 
-      state.summaries = Array.from(map.values()).map((summary) => {
+      const rows = Array.from(map.values());
+      const overheadShares = allocateOverhead(
+        rows.map((summary) => ({ weight: summary.headcount })),
+        state.config.fees.sharedOverhead
+      );
+
+      state.summaries = rows.map((summary, rowIndex) => {
         const configDept = state.config.departments.find((dept) => dept.name === summary.department) || summary;
         const assetCosts = departmentAssetCosts(configDept);
-        const overhead = state.config.fees.sharedOverhead * (summary.headcount / totalHeadcount);
-        const ticketTotal = summary.supportCost + summary.sensitivitySurcharge + summary.slaImpact;
-        const total = ticketTotal + assetCosts.total + overhead;
+        const overhead = overheadShares[rowIndex];
+        summary.supportCost = roundMoney(summary.supportCost);
+        summary.sensitivitySurcharge = roundMoney(summary.sensitivitySurcharge);
+        summary.slaImpact = roundMoney(summary.slaImpact);
+        const ticketTotal = roundMoney(summary.supportCost + summary.sensitivitySurcharge + summary.slaImpact);
+        const total = roundMoney(ticketTotal + assetCosts.total + overhead);
         const deviceUnits = summary.workstations + summary.carts;
         return {
           ...summary,
@@ -6729,12 +6878,12 @@
 
     function totals() {
       return {
-        total: state.summaries.reduce((sum, item) => sum + item.total, 0),
-        ticketTotal: state.summaries.reduce((sum, item) => sum + item.ticketTotal, 0),
+        total: sumMoney(state.summaries.map((item) => item.total)),
+        ticketTotal: sumMoney(state.summaries.map((item) => item.ticketTotal)),
         hours: state.tickets.reduce((sum, item) => sum + item.billedHours, 0),
         tickets: state.tickets.length,
         breaches: state.tickets.filter((ticket) => ticket.breached).length,
-        slaImpact: state.tickets.reduce((sum, item) => sum + item.slaImpact, 0),
+        slaImpact: sumMoney(state.tickets.map((item) => item.slaImpact)),
         topDepartment: state.summaries[0]?.department || "None"
       };
     }
@@ -6760,9 +6909,13 @@
       return output;
     }
 
+    // `fields` may be a thunk. Building a ticket's search text involves currency
+    // formatting, so per-ticket callers pass a function and pay that cost only
+    // when a search is actually active.
     function matchesTokens(fields, tokens) {
       if (!tokens.length) return true;
-      const text = flattenSearchValues(fields).join(" ").toLowerCase();
+      const resolved = typeof fields === "function" ? fields() : fields;
+      const text = flattenSearchValues(resolved).join(" ").toLowerCase();
       return tokens.every((token) => text.includes(token));
     }
 
@@ -6815,7 +6968,7 @@
 
     function ticketsForGlobalSearch(tokens = searchTokens(state.globalSearch)) {
       if (!tokens.length) return state.tickets;
-      return state.tickets.filter((ticket) => matchesTokens(ticketSearchFields(ticket), tokens));
+      return state.tickets.filter((ticket) => matchesTokens(() => ticketSearchFields(ticket), tokens));
     }
 
     function filteredSummariesForSearch(tokens = searchTokens(state.globalSearch)) {
@@ -6835,7 +6988,14 @@
         bucket.slaImpact += ticket.slaImpact;
         bucket.hours += ticket.billedHours;
       });
-      return Array.from(trendMap.values()).sort((a, b) => a.key.localeCompare(b.key));
+      return Array.from(trendMap.values())
+        .map((bucket) => ({
+          ...bucket,
+          grossCost: roundMoney(bucket.grossCost),
+          cost: roundMoney(bucket.cost),
+          slaImpact: roundMoney(bucket.slaImpact)
+        }))
+        .sort((a, b) => a.key.localeCompare(b.key));
     }
 
     function monthlyHistoryTrend() {
@@ -6843,7 +7003,7 @@
       state.importHistory.forEach((item) => {
         if (!isValidReportingPeriod(item.periodKey) || !item.snapshot) return;
         const snapshot = item.rows && item.mapping
-          ? snapshotForRows(item.rows, item.mapping, item.headers)
+          ? cachedSnapshotForRecord(item)
           : item.snapshot;
         periods.set(item.periodKey, {
           key: item.periodKey,
@@ -7514,6 +7674,7 @@
                     <option value="">Not mapped</option>
                     ${state.headers.map((header) => `<option value="${html(header)}" ${state.mapping[field.key] === header ? "selected" : ""}>${html(header)}</option>`).join("")}
                   </select>
+                  ${field.key === "hours" && state.mapping.hours ? `<p class="mapping-note">${html(hoursUnitNote(state.mapping.hours))}</p>` : ""}
                 </div>
               `).join("")}
             </div>
@@ -7692,39 +7853,6 @@
         </div>
       `;
     }
-    function renderDonut(items) {
-      const total = items.reduce((sum, item) => sum + item.total, 0);
-      if (!total) return `<div class="empty-state">No cost distribution available.</div>`;
-      const radius = 74;
-      const circumference = 2 * Math.PI * radius;
-      let offset = 0;
-      const segments = items.map((item, index) => {
-        const share = item.total / total;
-        const dash = share * circumference;
-        const segment = `<circle cx="120" cy="120" r="${radius}" fill="none" stroke="${themeColor(index)}" stroke-width="28" stroke-dasharray="${dash} ${circumference - dash}" stroke-dashoffset="${-offset}" transform="rotate(-90 120 120)"></circle>`;
-        offset += dash;
-        return segment;
-      }).join("");
-      return `
-        <div class="grid two" style="align-items:center">
-          <svg viewBox="0 0 240 240" style="width:100%;max-height:275px" role="img" aria-label="Department cost distribution">
-            <circle cx="120" cy="120" r="${radius}" fill="none" stroke="var(--surface-3)" stroke-width="28"></circle>
-            ${segments}
-            <text x="120" y="114" text-anchor="middle" font-size="18" font-weight="850" fill="var(--chart-ink)">${svgText(money(total))}</text>
-            <text x="120" y="136" text-anchor="middle" font-size="12" font-weight="700" fill="var(--chart-muted)">mode total</text>
-          </svg>
-          <div class="legend">
-            ${items.map((item, index) => `
-              <span class="legend-item">
-                <span class="swatch" style="background:${themeColor(index)}"></span>
-                ${html(item.department)} ${percent(item.total / total * 100)}
-              </span>
-            `).join("")}
-          </div>
-        </div>
-      `;
-    }
-
     function renderSlaPanel() {
       const rows = state.summaries
         .filter((item) => item.breaches || item.slaImpact)
@@ -7788,7 +7916,7 @@
       if (!selected) return `<section class="panel"><div class="empty-state">No departments available.</div></section>`;
       const selectedCoreMatch = matchesTokens(summaryCoreSearchFields(selected), tokens);
       const activityRows = tokens.length && !selectedCoreMatch
-        ? selected.tickets.filter((ticket) => matchesTokens(ticketSearchFields(ticket), tokens))
+        ? selected.tickets.filter((ticket) => matchesTokens(() => ticketSearchFields(ticket), tokens))
         : selected.tickets;
       return `
         <section class="grid">
@@ -7907,6 +8035,11 @@
 
     function renderTickets() {
       const rows = filteredTickets();
+      const pageCount = Math.max(1, Math.ceil(rows.length / TICKET_PAGE_SIZE));
+      // Filters can shrink the result set under the current page.
+      const page = Math.min(state.ticketPage, pageCount - 1);
+      state.ticketPage = page;
+      const pageStart = page * TICKET_PAGE_SIZE;
       const departments = ["All", ...Array.from(new Set(state.tickets.map((ticket) => ticket.department))).sort()];
       const priorities = ["All", "Low", "Medium", "High", "Critical"];
       const sensitivities = ["All", ...Array.from(new Set(state.tickets.map((ticket) => ticket.sensitivity))).sort()];
@@ -7934,7 +8067,8 @@
               ${renderFilterSelect("sensitivity", "Sensitivity", sensitivities)}
             </div>
             ${activeSearch() ? `<div class="search-inline"><span class="search-dot"></span><span>${rows.length} ${rows.length === 1 ? "ticket" : "tickets"} after global search and local filters</span></div>` : ""}
-            ${renderTicketTable(rows, false)}
+            ${renderTicketTable(rows.slice(pageStart, pageStart + TICKET_PAGE_SIZE), false)}
+            ${renderTicketPager(rows.length, page, pageCount)}
           </div>
         </section>
       `;
@@ -7957,8 +8091,28 @@
         if (state.filters.department !== "All" && ticket.department !== state.filters.department) return false;
         if (state.filters.priority !== "All" && ticket.priority !== state.filters.priority) return false;
         if (state.filters.sensitivity !== "All" && ticket.sensitivity !== state.filters.sensitivity) return false;
-        return matchesTokens(ticketSearchFields(ticket), tokens);
+        return matchesTokens(() => ticketSearchFields(ticket), tokens);
       });
+    }
+
+    // The inspector renders one page at a time. Exports and every total still
+    // run over the full filtered set; this caps DOM size, not the data.
+    const TICKET_PAGE_SIZE = 200;
+
+    function renderTicketPager(totalRows, page, pageCount) {
+      if (totalRows <= TICKET_PAGE_SIZE) return "";
+      const first = page * TICKET_PAGE_SIZE + 1;
+      const last = Math.min(totalRows, (page + 1) * TICKET_PAGE_SIZE);
+      return `
+        <div class="ticket-pager">
+          <span class="muted">Showing ${number(first, 0)}-${number(last, 0)} of ${number(totalRows, 0)} tickets</span>
+          <div class="inline-actions">
+            <button class="btn ghost" type="button" data-ticket-page="prev" ${page === 0 ? "disabled" : ""}>Previous</button>
+            <span class="muted">Page ${page + 1} of ${number(pageCount, 0)}</span>
+            <button class="btn ghost" type="button" data-ticket-page="next" ${page >= pageCount - 1 ? "disabled" : ""}>Next</button>
+          </div>
+        </div>
+      `;
     }
 
     function renderTicketTable(rows, compact) {
@@ -8643,6 +8797,13 @@
     }
 
     document.addEventListener("click", async (event) => {
+      const pagerButton = event.target.closest("[data-ticket-page]");
+      if (pagerButton) {
+        state.ticketPage = Math.max(0, state.ticketPage + (pagerButton.dataset.ticketPage === "next" ? 1 : -1));
+        render();
+        return;
+      }
+
       const guideSectionButton = event.target.closest("[data-guide-section]");
       if (guideSectionButton) {
         state.guideSection = guideSectionButton.dataset.guideSection === "monthly" ? "monthly" : "workflow";
@@ -8825,6 +8986,7 @@
 
       if (target.matches("[data-filter]")) {
         state.filters[target.dataset.filter] = target.value;
+        state.ticketPage = 0;
         render();
         return;
       }
@@ -8898,28 +9060,40 @@
       }
     });
 
+    let searchRenderTimer = 0;
+
+    // render() rebuilds the whole app and re-runs aggregate(), so rendering per
+    // keystroke stalls the UI on large imports. Coalesce bursts of typing, then
+    // restore focus and the caret exactly where the user left it rather than
+    // forcing it to the end of the value.
+    function renderAfterSearchInput(selector) {
+      window.clearTimeout(searchRenderTimer);
+      searchRenderTimer = window.setTimeout(() => {
+        const active = document.querySelector(selector);
+        const caret = active ? active.selectionStart : null;
+        render();
+        const restored = document.querySelector(selector);
+        if (!restored) return;
+        restored.focus();
+        const position = caret === null ? restored.value.length : Math.min(caret, restored.value.length);
+        restored.setSelectionRange(position, position);
+      }, 180);
+    }
+
     document.addEventListener("input", (event) => {
       const target = event.target;
       if (target.matches("[data-global-search]")) {
         state.globalSearch = target.value;
-        render();
+        state.ticketPage = 0;
         const origin = target.dataset.searchOrigin || "top";
-        const search = document.querySelector(`[data-search-origin="${origin}"]`);
-        if (search) {
-          search.focus();
-          search.setSelectionRange(search.value.length, search.value.length);
-        }
+        renderAfterSearchInput(`[data-search-origin="${origin}"]`);
         return;
       }
 
       if (target.matches("[data-filter='search']")) {
         state.filters.search = target.value;
-        render();
-        const search = document.querySelector("[data-filter='search']");
-        if (search) {
-          search.focus();
-          search.setSelectionRange(search.value.length, search.value.length);
-        }
+        state.ticketPage = 0;
+        renderAfterSearchInput("[data-filter='search']");
         return;
       }
 
@@ -9105,6 +9279,12 @@
 
     function exportDepartmentCsv() {
       if (!ensureExportReady()) return;
+      downloadText(`${state.mode}-department-ledger.csv`, toCsv(departmentLedgerRows()), "text/csv;charset=utf-8");
+    }
+
+    // Row building is kept separate from the download so the reconciliation
+    // invariant (line items sum to the total row) is directly testable.
+    function departmentLedgerRows() {
       const rows = [
         ["mode", "department", "cost_center", "line_item", "amount", "tickets", "hours", "breaches", "breach_rate"]
       ];
@@ -9131,11 +9311,15 @@
           ]);
         });
       });
-      downloadText(`${state.mode}-department-ledger.csv`, toCsv(rows), "text/csv;charset=utf-8");
+      return rows;
     }
 
     function exportTicketCsv() {
       if (!ensureExportReady()) return;
+      downloadText(`${state.mode}-ticket-calculations.csv`, toCsv(ticketCalculationRows()), "text/csv;charset=utf-8");
+    }
+
+    function ticketCalculationRows() {
       const rows = [
         ["mode", "ticket_id", "created_date", "closed_date", "department", "priority", "sensitivity", "assets", "device_types", "hours", "billed_hours", "sla_status", "tier", "rate", "multiplier", "after_hours", "project_code", "support_cost", "sensitivity_surcharge", "sla_impact", "billable_amount"]
       ];
@@ -9164,7 +9348,7 @@
           ticket.ticketTotal.toFixed(2)
         ]);
       });
-      downloadText(`${state.mode}-ticket-calculations.csv`, toCsv(rows), "text/csv;charset=utf-8");
+      return rows;
     }
 
     function exportPdf() {
@@ -9528,78 +9712,6 @@
       anchor.click();
       anchor.remove();
       URL.revokeObjectURL(url);
-    }
-
-    function buildPdf(lines) {
-      const maxChars = 96;
-      const wrapped = lines.flatMap((line) => wrapLine(line, maxChars));
-      const pageSize = 46;
-      const pages = [];
-      for (let index = 0; index < wrapped.length; index += pageSize) {
-        pages.push(wrapped.slice(index, index + pageSize));
-      }
-
-      const objects = [];
-      const pageObjIds = pages.map((_, index) => 4 + index * 2);
-      const contentObjIds = pages.map((_, index) => 5 + index * 2);
-      objects.push("<< /Type /Catalog /Pages 2 0 R >>");
-      objects.push(`<< /Type /Pages /Kids [${pageObjIds.map((id) => `${id} 0 R`).join(" ")}] /Count ${pages.length} >>`);
-      objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
-
-      pages.forEach((pageLines, index) => {
-        const pageId = pageObjIds[index];
-        const contentId = contentObjIds[index];
-        const content = [
-          "BT",
-          "/F1 10 Tf",
-          "50 742 Td",
-          "14 TL",
-          ...pageLines.map((line) => `(${pdfEscape(line)}) Tj T*`),
-          "ET"
-        ].join("\n");
-        objects[pageId - 1] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents ${contentId} 0 R >>`;
-        objects[contentId - 1] = `<< /Length ${content.length} >>\nstream\n${content}\nendstream`;
-      });
-
-      let pdf = "%PDF-1.4\n";
-      const offsets = [0];
-      objects.forEach((object, index) => {
-        offsets.push(pdf.length);
-        pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
-      });
-      const xrefOffset = pdf.length;
-      pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
-      offsets.slice(1).forEach((offset) => {
-        pdf += `${String(offset).padStart(10, "0")} 00000 n \n`;
-      });
-      pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
-      return pdf;
-    }
-
-    function wrapLine(line, maxChars) {
-      const clean = String(line ?? "");
-      if (!clean) return [""];
-      const words = clean.split(" ");
-      const lines = [];
-      let current = "";
-      words.forEach((word) => {
-        if ((current + " " + word).trim().length > maxChars) {
-          if (current) lines.push(current);
-          current = word;
-        } else {
-          current = (current + " " + word).trim();
-        }
-      });
-      if (current) lines.push(current);
-      return lines;
-    }
-
-    function pdfEscape(value) {
-      return String(value ?? "")
-        .replace(/[^\x09\x0A\x0D\x20-\x7E]/g, "?")
-        .replace(/\\/g, "\\\\")
-        .replace(/\(/g, "\\(")
-        .replace(/\)/g, "\\)");
     }
 
     render();
