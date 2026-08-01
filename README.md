@@ -6,6 +6,14 @@ The name **Qist** was chosen to signal fairness and measured allocation: each de
 
 ![Qist dashboard overview](docs/screenshots/dashboard-light.png)
 
+## Live Demo
+
+Once GitHub Pages is enabled with **GitHub Actions** as its source, the production dashboard is available at:
+
+[Launch Qist](https://ahmadsk-cell.github.io/Qist_ITSM-Showback-and-Chargeback-Dashboard/)
+
+Every push to `main` runs the automated parser, calculation, archive, and export tests before the site is deployed.
+
 ## Highlights
 
 - Client-side only: no backend, database, account, or telemetry.
@@ -161,13 +169,21 @@ Settings, appearance, and theme preferences are saved in browser storage. Ticket
 
 ## GitHub Pages
 
-This is a static web app. To publish it with GitHub Pages:
+The repository includes [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml). It runs the full Node test suite and deploys the static app after every successful push to `main`.
 
-1. Push the repository to GitHub.
-2. Open the repository **Settings** tab.
-3. Go to **Pages**.
-4. Select the branch containing `index.html`.
-5. Save the Pages configuration.
+One-time repository setup:
+
+1. Open the repository **Settings** tab on GitHub.
+2. Select **Pages** under **Code and automation**.
+3. Set **Source** to **GitHub Actions**.
+4. Open the **Actions** tab and run **Test and deploy Qist** if it did not start automatically.
+5. Confirm the `github-pages` environment reports a successful deployment.
+
+Production URL:
+
+```text
+https://ahmadsk-cell.github.io/Qist_ITSM-Showback-and-Chargeback-Dashboard/
+```
 
 ## Project Structure
 
