@@ -7802,13 +7802,27 @@
         const barHeight = Math.max(8, point.tickets / maxTickets * 76);
         return `<rect class="volume-bar" x="${x}" y="${padding.top + innerHeight - barHeight}" width="26" height="${barHeight}" rx="7"></rect>`;
       }).join("");
-      const labelEvery = Math.max(1, Math.ceil(points.length / 7));
+      // Thin the axis by how much room a label actually needs, not by point
+      // count: "Week of Mar 30" is far wider than "Apr 2026", and an arbitrary
+      // upload can span any number of periods.
+      const step = points.length > 1 ? innerWidth / (points.length - 1) : innerWidth;
+      const longestLabel = points.reduce((max, point) => Math.max(max, String(point.label).length), 0);
+      const estLabelWidth = longestLabel * 5.8;
+      const labelEvery = Math.max(1, Math.ceil(estLabelWidth / step));
       const labels = points.map((point, index) => {
         const lastIndex = points.length - 1;
-        const shouldLabel = points.length <= 7 || index === 0 || index === lastIndex || (index % labelEvery === 0 && index <= lastIndex - labelEvery);
+        // The final label is end-anchored, so it extends a full width leftward
+        // while a centred neighbour extends half a width right: 1.5x clearance.
+        const clearsFinalLabel = (lastIndex - index) * step >= estLabelWidth * 1.5;
+        const shouldLabel = index === 0 || index === lastIndex || (index % labelEvery === 0 && clearsFinalLabel);
         if (!shouldLabel) return "";
         const x = xFor(index);
-        const anchor = index === 0 ? "start" : index === lastIndex ? "end" : "middle";
+        // Centre every label except the last. A "start"-anchored first label
+        // extends its full width to the right of the tick while its neighbour is
+        // centred, which collides once labels are thinned. The left padding
+        // leaves room to centre it; the right edge does not, so the last stays
+        // end-anchored to avoid clipping outside the viewBox.
+        const anchor = index === lastIndex && points.length > 1 ? "end" : "middle";
         return `<text class="axis-label x-label" x="${x}" y="${height - 20}" text-anchor="${anchor}">${svgText(point.label)}</text>`;
       }).join("");
       const markerIndex = Math.min(points.length - 1, Math.max(0, Math.floor(points.length / 2)));
